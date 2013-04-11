@@ -20,6 +20,7 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback {
 		surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 	}
 
+	// Surface Holder Callback Methods - START
 	public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
 		camera.startPreview();
 	}
@@ -39,6 +40,12 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback {
 
 	public void surfaceDestroyed(SurfaceHolder holder) {
 		camera.stopPreview();
+		camera.release();
+		camera = null;
+	}
+	// Surface Holder Callback Methods - END
+	
+	public void onPause() {
 		camera.release();
 		camera = null;
 	}
