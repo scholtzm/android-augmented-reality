@@ -4,7 +4,6 @@ import com.scholtz.aor.R;
 import com.scholtz.aor.util.GlobalApp;
 import com.scholtz.aor.util.XmlParser;
 
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
 import android.content.Intent;
@@ -33,7 +32,7 @@ public class MainActivity extends Activity {
         }).start();
 	}
 	
-	private class Loading extends AsyncTask<Void, Void, Void> {
+	/*private class Loading extends AsyncTask<Void, Void, Void> {
 
 		@Override
 		protected Void doInBackground(Void... arg0) {
@@ -54,5 +53,5 @@ public class MainActivity extends Activity {
 			return null;
 		}
 		
-	}
+	}*/
 }

@@ -13,6 +13,7 @@ import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.hardware.Camera;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -38,7 +39,6 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private float[] orientation = new float[3];
 	private String locationSource = "---";
 	
-	@SuppressWarnings("deprecation")
 	@Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,21 +54,31 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        
+    }
+	
+	@SuppressWarnings("deprecation")
+	private void LayoutSetup() {
+		Camera camera = Camera.open();
+		
         frameLayout = new FrameLayout(this);
         frameLayout.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
         
-        cameraView = new CameraView(this);
+        cameraView = new CameraView(this, camera);
         frameLayout.addView(cameraView);
         
         poiView = new PoiView(this);
         frameLayout.addView(poiView);
         
         setContentView(frameLayout);
-    }
+	}
 	
 	protected void onPause() {
 		super.onPause();
+		
+		if(cameraView != null) {
+			cameraView.onPause();
+			cameraView = null;
+		}
 		
 		locationManager.removeUpdates(this);
 		mSensorManager.unregisterListener(this);
@@ -76,6 +86,8 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	
 	protected void onResume() {
 		super.onResume();
+		
+		LayoutSetup();
 		
 		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 1, this);
 		locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 1, this);
