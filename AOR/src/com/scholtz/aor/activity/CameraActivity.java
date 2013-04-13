@@ -60,16 +60,16 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private void LayoutSetup() {
 		Camera camera = Camera.open();
 		
-        frameLayout = new FrameLayout(this);
-        frameLayout.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
-        
-        cameraView = new CameraView(this, camera);
-        frameLayout.addView(cameraView);
-        
-        poiView = new PoiView(this);
-        frameLayout.addView(poiView);
-        
-        setContentView(frameLayout);
+	    frameLayout = new FrameLayout(this);
+	    frameLayout.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
+	    
+	    cameraView = new CameraView(this, camera);
+	    frameLayout.addView(cameraView);
+	    
+	    poiView = new PoiView(this);
+	    frameLayout.addView(poiView);
+	    
+	    setContentView(frameLayout);
 	}
 	
 	protected void onPause() {
@@ -161,7 +161,6 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		poiView.invalidate();
 	}
 	// Sensor Event Listener Methods - END
-	
 	
 	private class PoiView extends SurfaceView {
 		private Paint textPaint = new Paint();

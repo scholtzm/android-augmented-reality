@@ -37,10 +37,6 @@ public class GlobalApp extends Application {
 	
 	/**
 	 * Finds relevant bus stops around the user
-	 * @param loc - Current location
-	 * @param stops - List of all stops
-	 * @param relevant - List of relevant stops - to be populated
-	 * @param D - Distance (half of the length of the square around the user)
 	 */
 	public void findRelevantStops() {
 		for(Poi p : stops) {
@@ -55,11 +51,9 @@ public class GlobalApp extends Application {
 	
 	/**
 	 * Sorts stops by distance according to current location
-	 * @param loc - Current location
-	 * @param list - List of all stops
 	 */
-	public void sortByDistance(final Location loc, ArrayList<Poi> list) {
-		Collections.sort(list, new Comparator<Poi>() {
+	public void sortByDistance() {
+		Collections.sort(stops, new Comparator<Poi>() {
 		    public int compare(Poi a, Poi b) {
 				Location locA = new Location(LocationManager.PASSIVE_PROVIDER);
 				locA.setLatitude(a.getLat());
@@ -69,8 +63,8 @@ public class GlobalApp extends Application {
 				locB.setLatitude(b.getLat());
 				locB.setLongitude(b.getLon());
 				
-		    	float distA = locA.distanceTo(loc);
-		    	float distB = locB.distanceTo(loc);
+		    	float distA = locA.distanceTo(currentLocation);
+		    	float distB = locB.distanceTo(currentLocation);
 		    	
 		    	return Float.compare(distA, distB);
 		    }
