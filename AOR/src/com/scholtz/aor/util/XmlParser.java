@@ -1,4 +1,4 @@
-package com.scholtz.aor.helper;
+package com.scholtz.aor.util;
 
 import java.io.InputStream;
 import java.util.ArrayList;

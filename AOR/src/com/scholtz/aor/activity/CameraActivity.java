@@ -1,5 +1,7 @@
 package com.scholtz.aor.activity;
 
+import com.scholtz.aor.util.GlobalApp;
+import com.scholtz.aor.util.Util;
 import com.scholtz.aor.view.CameraView;
 
 import android.location.Location;
@@ -15,6 +17,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.util.Log;
 import android.view.SurfaceView;
 import android.view.Window;
 import android.view.WindowManager;
@@ -27,16 +30,20 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private PoiView poiView;
 	private LocationManager locationManager;
 	private SensorManager mSensorManager;
+	private GlobalApp gApp;
 	
 	private double lat = 0, lon = 0;
 	private float[] accelerometerValues = new float[3];
 	private float[] magneticFieldValues = new float[3];
 	private float[] orientation = new float[3];
+	private String locationSource = "---";
 	
 	@SuppressWarnings("deprecation")
 	@Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        gApp = ((GlobalApp)getApplicationContext());
         
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 1, this);
@@ -60,19 +67,8 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
         setContentView(frameLayout);
     }
 	
-	/**
-	 * Disables back button
-	 */
-	public void onBackPressed() {
-	}
-	
 	protected void onPause() {
 		super.onPause();
-		
-		/*if(cameraView != null) {
-			cameraView.onPause();
-			cameraView = null;
-		}*/
 		
 		locationManager.removeUpdates(this);
 		mSensorManager.unregisterListener(this);
@@ -90,6 +86,32 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	
 	// Location Listener Methods - START
 	public void onLocationChanged(Location location) {
+		if(gApp.getCurrentLocation() == null) {
+			gApp.setCurrentLocation(location);
+			
+			long t1 = System.currentTimeMillis();
+			gApp.findRelevantStops();
+			Log.d("aor.time", String.valueOf(System.currentTimeMillis()-t1));
+			
+		} else if(location.getProvider() == LocationManager.GPS_PROVIDER) {
+			if(gApp.getCurrentLocation().getProvider() == LocationManager.NETWORK_PROVIDER) {
+				gApp.setCurrentLocation(location);
+				gApp.findRelevantStops();
+			} else {
+				if(location.distanceTo(gApp.getCurrentLocation()) >= gApp.getTreshhold()) {
+					gApp.setCurrentLocation(location);
+					gApp.findRelevantStops();
+				}
+			}
+			
+		} else if(location.getProvider() == LocationManager.NETWORK_PROVIDER) {
+			if(gApp.getCurrentLocation().getProvider() == LocationManager.NETWORK_PROVIDER) {
+				gApp.setCurrentLocation(location);
+				gApp.findRelevantStops();
+			}
+		}
+		
+		locationSource = location.getProvider();
 		lat = location.getLatitude();
 		lon = location.getLongitude();
 		
@@ -135,18 +157,19 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		public PoiView(Context context) {
 			super(context);
 			
-			textPaint.setARGB(255, 255, 255, 255);
+			textPaint.setARGB(255, 255, 43, 43);
 			textPaint.setTextSize(30);
 			setWillNotDraw(false);
 		}
 
 		@Override
 		protected void onDraw(Canvas canvas) {
-			canvas.drawText("Lat: " + lat, 10, 50, textPaint);
-			canvas.drawText("Lon: " + lon, 10, 80, textPaint);
-			canvas.drawText("Azimuth: " + orientation[0], 10, 110, textPaint);
-			canvas.drawText("Pitch: " + orientation[1], 10, 140, textPaint);
-			canvas.drawText("Roll: " + orientation[2], 10, 170, textPaint);
+			canvas.drawText("Location source: " + locationSource, 10, 30, textPaint);
+			canvas.drawText("Lat: " + lat, 10, 60, textPaint);
+			canvas.drawText("Lon: " + lon, 10, 90, textPaint);
+			canvas.drawText(String.format("Azimuth: %5.2f", Util.rad2deg(orientation[0])), 10, 120, textPaint);
+			canvas.drawText(String.format("Pitch: %5.2f", Util.rad2deg(orientation[1])), 10, 150, textPaint);
+			canvas.drawText(String.format("Roll: %5.2f", Util.rad2deg(orientation[2])), 10, 180, textPaint);
 		}
 	}
 }

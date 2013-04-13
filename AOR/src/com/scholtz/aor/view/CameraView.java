@@ -10,7 +10,6 @@ import android.view.SurfaceView;
 public class CameraView extends SurfaceView implements SurfaceHolder.Callback {
 	private Camera camera;
 	private SurfaceHolder surfaceHolder;
-	private Camera.Parameters cameraParameters;
 
 	@SuppressWarnings("deprecation")
 	public CameraView(Context context) {
@@ -27,7 +26,7 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback {
 
 	public void surfaceCreated(SurfaceHolder holder) {
 		camera = Camera.open();
-		cameraParameters = camera.getParameters();
+		Camera.Parameters cameraParameters = camera.getParameters();
         camera.setParameters(cameraParameters);
         
         try {
@@ -46,7 +45,7 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback {
 	// Surface Holder Callback Methods - END
 	
 	public void onPause() {
-		camera.release();
-		camera = null;
-	}
+        camera.release();
+        camera = null;
+    }
 }

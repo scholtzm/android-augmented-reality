@@ -1,4 +1,4 @@
-package com.scholtz.aor.helper;
+package com.scholtz.aor.util;
 
 public class Poi {
 	private int poiId;
