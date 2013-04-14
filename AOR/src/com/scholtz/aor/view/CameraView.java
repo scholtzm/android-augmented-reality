@@ -14,7 +14,7 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback {
 	@SuppressWarnings("deprecation")
 	public CameraView(Context context, Camera camera) {
 		super(context);
-		
+
 		this.camera = camera;
 		surfaceHolder = getHolder();
 		surfaceHolder.addCallback(this);
@@ -28,9 +28,9 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback {
 
 	public void surfaceCreated(SurfaceHolder holder) {
 		Camera.Parameters cameraParameters = camera.getParameters();
-        camera.setParameters(cameraParameters);
-        
-        try {
+		camera.setParameters(cameraParameters);
+
+		try {
 			camera.setPreviewDisplay(surfaceHolder);
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -40,11 +40,12 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback {
 
 	public void surfaceDestroyed(SurfaceHolder holder) {
 	}
+
 	// Surface Holder Callback Methods - END
-	
+
 	public void onPause() {
 		camera.stopPreview();
-        camera.release();
-        camera = null;
-    }
+		camera.release();
+		camera = null;
+	}
 }
