@@ -29,12 +29,9 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".LocationActivity"
-            android:label="@string/title_activity_location" >
-        </activity>
-        <activity
             android:name=".activity.CameraActivity"
-            android:label="@string/title_activity_camera" >
+            android:label="@string/title_activity_camera"
+            android:screenOrientation="landscape" >
         </activity>
     </application>
 

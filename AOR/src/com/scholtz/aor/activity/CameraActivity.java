@@ -36,6 +36,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private double lat = 0, lon = 0;
 	private float[] accelerometerValues = new float[3];
 	private float[] magneticFieldValues = new float[3];
+	private float[] orientationValues = new float[3];
 	private float[] orientation = new float[3];
 	private String locationSource = "---";
 	
@@ -84,6 +85,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		mSensorManager.unregisterListener(this);
 	}
 	
+	@SuppressWarnings("deprecation")
 	protected void onResume() {
 		super.onResume();
 		
@@ -92,6 +94,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 1, this);
 		locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 1, this);
 		
+		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_NORMAL);
 		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), SensorManager.SENSOR_DELAY_NORMAL);
 		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
 	}
@@ -144,19 +147,26 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	public void onAccuracyChanged(Sensor arg0, int arg1) {
 	}
 
+	@SuppressWarnings("deprecation")
 	public void onSensorChanged(SensorEvent event) {
 		if(event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-			accelerometerValues = event.values;
+			System.arraycopy(event.values, 0, accelerometerValues, 0, event.values.length);
 		}
 		if(event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
-			magneticFieldValues = event.values;
+			System.arraycopy(event.values, 0, magneticFieldValues, 0, event.values.length);
+		}
+		if(event.sensor.getType() == Sensor.TYPE_ORIENTATION) {
+			System.arraycopy(event.values, 0, orientationValues, 0, event.values.length);
 		}
 		
 		float[] R = new float[9];
-		float[] I = new float[9];
-		SensorManager.getRotationMatrix(R, I, accelerometerValues, magneticFieldValues);
 		
+		SensorManager.getRotationMatrix(R, null, accelerometerValues, magneticFieldValues);
+		// needs to be remapped to landscape mode
+		SensorManager.remapCoordinateSystem(R, SensorManager.AXIS_Z, SensorManager.AXIS_MINUS_X, R);
 		SensorManager.getOrientation(R, orientation);
+		
+		// najdi viditelne zastavky
 		
 		poiView.invalidate();
 	}
@@ -176,11 +186,12 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		@Override
 		protected void onDraw(Canvas canvas) {
 			canvas.drawText("Location source: " + locationSource, 10, 30, textPaint);
-			canvas.drawText("Lat: " + lat, 10, 60, textPaint);
-			canvas.drawText("Lon: " + lon, 10, 90, textPaint);
-			canvas.drawText(String.format("Azimuth: %5.2f", Util.rad2deg(orientation[0])), 10, 120, textPaint);
+			canvas.drawText("Latitude: " + lat, 10, 60, textPaint);
+			canvas.drawText("Longitude: " + lon, 10, 90, textPaint);
+			canvas.drawText(String.format("Azimuth: %5.2f", Util.normalize(Util.rad2deg(orientation[0]))), 10, 120, textPaint);
 			canvas.drawText(String.format("Pitch: %5.2f", Util.rad2deg(orientation[1])), 10, 150, textPaint);
 			canvas.drawText(String.format("Roll: %5.2f", Util.rad2deg(orientation[2])), 10, 180, textPaint);
+			canvas.drawText(String.format("Azimuth2: %5.2f", orientationValues[0]), 10, 210, textPaint);
 		}
 	}
 }
