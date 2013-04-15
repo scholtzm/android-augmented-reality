@@ -1,6 +1,9 @@
 package com.scholtz.aor.activity;
 
+import java.util.List;
+
 import com.scholtz.aor.util.GlobalApp;
+import com.scholtz.aor.util.Poi;
 import com.scholtz.aor.util.Util;
 import com.scholtz.aor.view.CameraView;
 
@@ -33,6 +36,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private SensorManager mSensorManager;
 	private GlobalApp gApp;
 	
+	private List<Poi> visible = null;
 	private double lat = 0, lon = 0;
 	private float[] accelerometerValues = new float[3];
 	private float[] magneticFieldValues = new float[3];
@@ -106,7 +110,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			
 			long t1 = System.currentTimeMillis();
 			gApp.findRelevantStops();
-			Log.d("aor.time", String.valueOf(System.currentTimeMillis()-t1));
+			Log.d("aor.time.relevant", String.valueOf(System.currentTimeMillis()-t1));
 			
 		} else if(location.getProvider() == LocationManager.GPS_PROVIDER) {
 			if(gApp.getCurrentLocation().getProvider() == LocationManager.NETWORK_PROVIDER) {
@@ -162,11 +166,15 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		float[] R = new float[9];
 		
 		SensorManager.getRotationMatrix(R, null, accelerometerValues, magneticFieldValues);
-		// needs to be remapped to landscape mode
+		// needs to be remapped for landscape mode
 		SensorManager.remapCoordinateSystem(R, SensorManager.AXIS_Z, SensorManager.AXIS_MINUS_X, R);
 		SensorManager.getOrientation(R, orientation);
 		
-		// najdi viditelne zastavky
+		// find visible stops according to azimuth
+		long t1 = System.currentTimeMillis();
+		gApp.findVisibleStops(orientation[0]);
+		visible = gApp.getVisible();
+		Log.d("aor.time.visible", String.valueOf(System.currentTimeMillis()-t1));
 		
 		poiView.invalidate();
 	}
@@ -192,6 +200,20 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			canvas.drawText(String.format("Pitch: %5.2f", Util.rad2deg(orientation[1])), 10, 150, textPaint);
 			canvas.drawText(String.format("Roll: %5.2f", Util.rad2deg(orientation[2])), 10, 180, textPaint);
 			canvas.drawText(String.format("Azimuth2: %5.2f", orientationValues[0]), 10, 210, textPaint);
+			
+			if(visible != null) {
+				int startY = 240;
+				int max = 6;
+				
+				if(max > visible.size()) {
+					max = visible.size();
+				}
+				
+				for(int i = 0; i < max; i++) {
+					canvas.drawText(visible.get(i).getName(), 10, startY, textPaint);
+					startY += 30;
+				}
+			}
 		}
 	}
 }
