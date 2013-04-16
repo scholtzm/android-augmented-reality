@@ -28,6 +28,12 @@ import android.view.WindowManager;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.FrameLayout;
 
+/**
+ * CameraActivity class
+ * This class combines CameraView and DrawView and implements location and sensor listeners (accelerometer, magnetic field)
+ * @author Mike
+ *
+ */
 public class CameraActivity extends Activity implements LocationListener, SensorEventListener {
 	private FrameLayout frameLayout;
 	private CameraView cameraView;
@@ -44,6 +50,10 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private float[] orientation = new float[3];
 	private String locationSource = "---";
 	
+	/**
+	 * Setup required services in onCreate
+	 * Set window parameters
+	 */
 	@Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -61,6 +71,10 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
     }
 	
+	/**
+	 * Set Layout as a combination of 2 views on top of each other
+	 * Open camera and pass it as parameter to CameraView
+	 */
 	@SuppressWarnings("deprecation")
 	private void LayoutSetup() {
 		Camera camera = Camera.open();
@@ -77,6 +91,9 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	    setContentView(frameLayout);
 	}
 	
+	/**
+	 * Take care of camera and unregister listeners
+	 */
 	protected void onPause() {
 		super.onPause();
 		
@@ -89,6 +106,10 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		mSensorManager.unregisterListener(this);
 	}
 	
+	/**
+	 * Call layout setup
+	 * Request location and sensor updates
+	 */
 	@SuppressWarnings("deprecation")
 	protected void onResume() {
 		super.onResume();
@@ -104,6 +125,10 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	}
 	
 	// Location Listener Methods - START
+	/**
+	 * This method takes care of location events
+	 * Store GPS coordinates if possible, otherwise use network
+	 */
 	public void onLocationChanged(Location location) {
 		if(gApp.getCurrentLocation() == null) {
 			gApp.setCurrentLocation(location);
@@ -151,6 +176,10 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	public void onAccuracyChanged(Sensor arg0, int arg1) {
 	}
 
+	/**
+	 * This method takes care of location events
+	 * Recalculate azimuth and visible stops
+	 */
 	@SuppressWarnings("deprecation")
 	public void onSensorChanged(SensorEvent event) {
 		if(event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
@@ -180,6 +209,12 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	}
 	// Sensor Event Listener Methods - END
 	
+	/**
+	 * Inner class for DrawView
+	 * Currently used for debugging (mostly)
+	 * @author Mike
+	 *
+	 */
 	private class PoiView extends SurfaceView {
 		private Paint textPaint = new Paint();
 

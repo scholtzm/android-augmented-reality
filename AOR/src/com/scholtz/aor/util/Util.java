@@ -1,5 +1,10 @@
 package com.scholtz.aor.util;
 
+/**
+ * Utility class which inclused static helper methods
+ * @author Mike
+ *
+ */
 public class Util {
 	private static final int R = 6371;
 	

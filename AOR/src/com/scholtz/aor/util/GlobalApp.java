@@ -9,11 +9,17 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.util.Log;
 
+/**
+ * Globally accessible variables and methods
+ * This class holds data such as stops or current location
+ * @author Mike
+ *
+ */
 public class GlobalApp extends Application {
 	private final double D = 0.01;
-	private final double treshhold = 500;
-	private final int fov = 60;
-	private final int fovHalf = fov / 2;
+	private final double TRESHOLD = 500;
+	private final int FOV = 60;
+	private final int FOVHALF = FOV / 2;
 
 	private List<Poi> stops = null;
 	private List<Poi> relevant = null;
@@ -21,11 +27,11 @@ public class GlobalApp extends Application {
 	private Location currentLocation = null;
 	
 	public int getFov() {
-		return fov;
+		return FOV;
 	}
 
 	public double getTreshhold() {
-		return treshhold;
+		return TRESHOLD;
 	}
 	
 	public List<Poi> getStops() {
@@ -87,7 +93,7 @@ public class GlobalApp extends Application {
 			
 			int azimuthAngle = (int) Util.fixAzimuth(azimuth);
 			
-			if(Math.abs(poiAngle-azimuthAngle) <= fovHalf) {
+			if(Math.abs(poiAngle-azimuthAngle) <= FOVHALF) {
 				visible.add(p);
 				Log.d("aor.visible.added", p.getName());
 			}

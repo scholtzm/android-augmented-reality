@@ -15,6 +15,11 @@ import com.scholtz.aor.R;
 
 import android.content.Context;
 
+/**
+ * XML Parser class which parses XML database using DOM parser
+ * @author Mike
+ *
+ */
 public class XmlParser {
 	private final String POIDATA = "poiData";
 	private final String POIID = "poiId";

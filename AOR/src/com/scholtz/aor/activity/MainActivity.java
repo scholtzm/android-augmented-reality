@@ -10,6 +10,12 @@ import android.util.Log;
 import android.app.Activity;
 import android.content.Intent;
 
+/**
+ * MainActivity - application starts here
+ * Call LoadingTask to parse XML database
+ * @author Mike
+ *
+ */
 public class MainActivity extends Activity {
 
 	@Override
@@ -17,10 +23,10 @@ public class MainActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 
-		new Loading().execute();
+		new LoadingTask().execute();
 	}
 
-	private class Loading extends AsyncTask<Void, Void, Void> {
+	private class LoadingTask extends AsyncTask<Void, Void, Void> {
 
 		@Override
 		protected Void doInBackground(Void... arg0) {

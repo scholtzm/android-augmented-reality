@@ -7,6 +7,11 @@ import android.hardware.Camera;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+/**
+ * CameraView which extends SurfaceView and implements callbacks
+ * @author Mike
+ *
+ */
 public class CameraView extends SurfaceView implements SurfaceHolder.Callback {
 	private Camera camera;
 	private SurfaceHolder surfaceHolder;
@@ -40,7 +45,6 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback {
 
 	public void surfaceDestroyed(SurfaceHolder holder) {
 	}
-
 	// Surface Holder Callback Methods - END
 
 	public void onPause() {

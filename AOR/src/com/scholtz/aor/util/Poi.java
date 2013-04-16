@@ -1,5 +1,10 @@
 package com.scholtz.aor.util;
 
+/**
+ * POI class that represents stop from database 
+ * @author Mike
+ *
+ */
 public class Poi {
 	private int poiId;
 	private String type;
