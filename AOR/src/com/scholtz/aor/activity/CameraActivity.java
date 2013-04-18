@@ -200,10 +200,8 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		SensorManager.getOrientation(R, orientation);
 		
 		// find visible stops according to azimuth
-		long t1 = System.currentTimeMillis();
 		gApp.findVisibleStops(orientation[0]);
 		visible = gApp.getVisible();
-		Log.d("aor.time.visible", String.valueOf(System.currentTimeMillis()-t1));
 		
 		poiView.invalidate();
 	}
@@ -245,7 +243,8 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 				}
 				
 				for(int i = 0; i < max; i++) {
-					canvas.drawText(visible.get(i).getName(), 10, startY, textPaint);
+					Poi p = visible.get(i);
+					canvas.drawText(p.getName() + " - " + p.getDescription(), 10, startY, textPaint);
 					startY += 30;
 				}
 			}

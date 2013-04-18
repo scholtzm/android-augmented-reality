@@ -22,8 +22,8 @@ public class GlobalApp extends Application {
 	private final int FOVHALF = FOV / 2;
 
 	private List<Poi> stops = null;
-	private List<Poi> relevant = null;
-	private List<Poi> visible = null;
+	private List<Poi> relevant = new ArrayList<Poi>();
+	private List<Poi> visible = new ArrayList<Poi>();
 	private Location currentLocation = null;
 	
 	public int getFov() {
@@ -58,7 +58,9 @@ public class GlobalApp extends Application {
 	 * Finds relevant bus stops around the user according to current location
 	 */
 	public void findRelevantStops() {
-		relevant = new ArrayList<Poi>();
+		long start = System.nanoTime();
+
+		relevant.clear();
 		
 		for (Poi p : stops) {
 			if (p.getLat() >= (currentLocation.getLatitude() - D) &&
@@ -68,36 +70,62 @@ public class GlobalApp extends Application {
 				relevant.add(p);
 			}
 		}
+
+		double time = (System.nanoTime() - start) / 1000000.0;
+		Log.d("AOR", "Found " + relevant.size() + " stops in " + time + "ms");
 	}
 	
+	private long counter = 0;
+
 	/**
 	 * Finds visible stops according to users location and azimuth
 	 * @param azimuth Device azimuth
 	 */
 	public void findVisibleStops(float azimuth) {
 		if(currentLocation == null) {
+			Log.d("AOR", "No location...");
 			return;
 		}
 		
-		visible = new ArrayList<Poi>();
+		counter++;
+		long start = System.nanoTime();
+
+		for (Poi p : visible)
+			p.visible = false;
+		visible.clear();
 		
-		double currentX = Util.toCartesianX(currentLocation.getLatitude(), currentLocation.getLongitude());
-		double currentY = Util.toCartesianY(currentLocation.getLatitude(), currentLocation.getLongitude());
+		double currentX = currentLocation.getLongitude(); //Util.toCartesianX(currentLocation.getLatitude(), currentLocation.getLongitude());
+		double currentY = currentLocation.getLatitude();  //Util.toCartesianY(currentLocation.getLatitude(), currentLocation.getLongitude());
+
+		// Log.d("AOR", "currentX: " + currentX + " currentY: " + currentY + " azimuth:" + azimuth);
 		
+		azimuth = 90 - azimuth;
+		if (counter % 100 == 0)
+			Log.d("AOR", "azimuth:" + azimuth);
+
+		// Log.d("AOR", "newAzimuth:" + azimuth);
+
 		for(Poi p : relevant) {
-			double poiX = Util.toCartesianX(p.getLat(), p.getLon());
-			double poiY = Util.toCartesianY(p.getLat(), p.getLon());
+			double poiX = p.getLon(); //Util.toCartesianX(p.getLat(), p.getLon());
+			double poiY = p.getLat(); //Util.toCartesianY(p.getLat(), p.getLon());
 			
-			int poiAngle = (int) Util.normalize(Util.rad2deg(Math.atan2(poiY - currentY, poiX - currentX)));
-			Log.d("aor.visible.poiangle", p.getName() + " LAT: " + p.getLat() + " LON: " + p.getLon() + " " + String.valueOf(poiAngle));
+			double angle = Math.atan2(poiY - currentY, poiX - currentX);
+			double degAngle = Util.rad2deg(angle);
+			double poiAngle = Util.normalize(degAngle);
 			
-			int azimuthAngle = (int) Util.fixAzimuth(azimuth);
-			
-			if(Math.abs(poiAngle-azimuthAngle) <= FOVHALF) {
+			if (counter % 100 == 0) {
+				Log.d("AOR", p.getName() + " lat:" + p.getLat() + " lon:" + p.getLon() + " angle:" + poiAngle);
+			}
+
+			if(Math.abs(Util.angleDiff(azimuth, poiAngle)) <= FOVHALF) {
 				visible.add(p);
-				Log.d("aor.visible.added", p.getName());
+				p.visible = true;
 			}
 		}
+
+		double time = (System.nanoTime() - start) / 1000000.0;
+		if (counter % 100 == 0)
+			Log.d("AOR", "Added " + visible.size() + " stops in " + time + "ms");
 	}
 
 	/**

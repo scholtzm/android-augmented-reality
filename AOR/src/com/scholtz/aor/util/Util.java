@@ -6,7 +6,7 @@ package com.scholtz.aor.util;
  *
  */
 public class Util {
-	private static final int R = 6371;
+	private static final int R = 6371000;
 	
 	public static double rad2deg(double rad) {
 		return rad * 180 / Math.PI;
@@ -21,19 +21,32 @@ public class Util {
 	}
 	
 	public static double toCartesianX(double lat, double lon) {
+		lat = Math.toRadians(lat);
+		lon = Math.toRadians(lon);
 		return (double) (R * Math.cos(lat) * Math.cos(lon));
 	}
 	
 	public static double toCartesianY(double lat, double lon) {
+		lat = Math.toRadians(lat);
+		lon = Math.toRadians(lon);
 		return (double) (R * Math.cos(lat) * Math.sin(lon));
 	}
 	
-	public static float fixAzimuth(float azimuth) {
-		float newAzimuth = azimuth + 270;
+	public static double fixAzimuth(double azimuth) {
+		double newAzimuth = azimuth + 270;
 		if(azimuth > 360) {
 			newAzimuth -= 360;
 		}
 		
 		return newAzimuth;
+	}
+
+	public static double angleDiff(double a, double b) {
+		double d = a - b;
+		if (d>180)
+			d-=360;
+		if (d<-180)
+			d+=360;
+		return d;
 	}
 }

@@ -12,6 +12,8 @@ public class Poi {
 	private double lat;
 	private double lon;
 	private String description;
+
+	public boolean visible;
 	
 	public Poi() {
 	}
