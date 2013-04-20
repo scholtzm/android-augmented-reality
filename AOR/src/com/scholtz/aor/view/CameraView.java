@@ -32,10 +32,8 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback {
 	}
 
 	public void surfaceCreated(SurfaceHolder holder) {
-		if(camera != null) {
-			Camera.Parameters cameraParameters = camera.getParameters();
-			camera.setParameters(cameraParameters);
-		}
+		Camera.Parameters cameraParameters = camera.getParameters();
+		camera.setParameters(cameraParameters);
 
 		try {
 			camera.setPreviewDisplay(surfaceHolder);

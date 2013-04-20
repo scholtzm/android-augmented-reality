@@ -79,8 +79,6 @@ public class XmlParser {
 				}
 				pois.add(p);
 			}
-			
-			in.close();
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}

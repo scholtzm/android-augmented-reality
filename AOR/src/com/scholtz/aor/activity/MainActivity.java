@@ -6,6 +6,7 @@ import com.scholtz.aor.util.XmlParser;
 
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Log;
 import android.app.Activity;
 import android.content.Intent;
 
@@ -32,7 +33,9 @@ public class MainActivity extends Activity {
 			GlobalApp gApp = ((GlobalApp) getApplicationContext());
 			XmlParser xml = new XmlParser(getApplicationContext());
 
+			Log.d("aor.load", "Starting XML parser.");
 			gApp.setStops(xml.parse());
+			Log.d("aor.load", "XML parsing finished.");
 
 			return null;
 		}
