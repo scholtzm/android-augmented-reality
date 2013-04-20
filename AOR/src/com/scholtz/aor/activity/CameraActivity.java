@@ -279,15 +279,22 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			paintRed.setStrokeWidth(3);
 			Paint paintBlue = new Paint();
 			paintBlue.setARGB(255, 0, 0, 255);
-			paintBlue.setStrokeWidth(3);
+			paintBlue.setStrokeWidth(2);
 			
 			// center - kind of
 			float fromLeft = canvas.getWidth() - 100;
 			float fromTop = 100;
 			
+			// draw white bg
 			canvas.drawRect(canvas.getWidth() - 200, 0, canvas.getWidth(), 200, paintBg);
-			canvas.drawPoint(fromLeft, fromTop, paintBlue);
 			
+			// draw direction			
+			float angleRad = (float) ((Math.PI/2) - orientation[0]);
+			float userX = (float) Math.cos(angleRad);
+			float userY = (float) Math.sin(angleRad);
+			canvas.drawLine(fromLeft, fromTop, userX * 70 + fromLeft, userY * 70 + fromTop, paintBlue);
+			
+			// draw stops
 			if(relevant != null && cloc != null) {
 				for(Poi p : relevant) {
 					float pX = (float) ((p.getLon() - cloc.getLongitude()) / gApp.getD() * 100);

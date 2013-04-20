@@ -1,7 +1,7 @@
 package com.scholtz.aor.util;
 
 /**
- * Utility class which inclused static helper methods
+ * Utility class which includes static helper methods
  * @author Mike
  *
  */
@@ -30,15 +30,6 @@ public class Util {
 		lat = Math.toRadians(lat);
 		lon = Math.toRadians(lon);
 		return (double) (R * Math.cos(lat) * Math.sin(lon));
-	}
-	
-	public static double fixAzimuth(double azimuth) {
-		double newAzimuth = azimuth + 270;
-		if(azimuth > 360) {
-			newAzimuth -= 360;
-		}
-		
-		return newAzimuth;
 	}
 
 	public static double angleDiff(double a, double b) {
