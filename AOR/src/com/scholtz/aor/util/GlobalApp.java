@@ -17,7 +17,7 @@ import android.util.Log;
  */
 public class GlobalApp extends Application {
 	private final double D = 0.01;
-	private final double TRESHOLD = 500;
+	private final double TRESHOLD = 500.0;
 	private final int FOV = 60;
 	private final int FOVHALF = FOV / 2;
 
@@ -34,12 +34,20 @@ public class GlobalApp extends Application {
 		return TRESHOLD;
 	}
 	
+	public double getD() {
+		return D;
+	}
+	
 	public List<Poi> getStops() {
 		return stops;
 	}
 
 	public void setStops(List<Poi> stops) {
 		this.stops = stops;
+	}
+	
+	public List<Poi> getRelevant() {
+		return relevant;
 	}
 	
 	public List<Poi> getVisible() {
@@ -81,16 +89,16 @@ public class GlobalApp extends Application {
 	 * Finds visible stops according to users location and azimuth
 	 * @param azimuth Device azimuth
 	 */
-	public void findVisibleStops(float azimuth) {
+	public void findVisibleStops(double azimuth) {
 		if(currentLocation == null) {
-			Log.d("AOR", "No location...");
+			Log.d("AOR.noloc", "No location...");
 			return;
 		}
 		
 		counter++;
 		long start = System.nanoTime();
 
-		for (Poi p : visible)
+		for (Poi p : relevant)
 			p.visible = false;
 		visible.clear();
 		
@@ -99,9 +107,11 @@ public class GlobalApp extends Application {
 
 		// Log.d("AOR", "currentX: " + currentX + " currentY: " + currentY + " azimuth:" + azimuth);
 		
+		if (counter % 100 == 0)
+			Log.d("AOR.azimuth", "oldAzimuth: " + azimuth);
 		azimuth = 90 - azimuth;
 		if (counter % 100 == 0)
-			Log.d("AOR", "azimuth:" + azimuth);
+			Log.d("AOR.azimuth", "newAzimuth: " + azimuth);
 
 		// Log.d("AOR", "newAzimuth:" + azimuth);
 

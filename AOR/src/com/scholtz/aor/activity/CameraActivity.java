@@ -43,6 +43,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private GlobalApp gApp;
 	
 	private List<Poi> visible = null;
+	private List<Poi> relevant = null;
 	private double lat = 0, lon = 0;
 	private float[] accelerometerValues = new float[3];
 	private float[] magneticFieldValues = new float[3];
@@ -137,14 +138,26 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			gApp.findRelevantStops();
 			Log.d("aor.time.relevant", String.valueOf(System.currentTimeMillis()-t1));
 			
+			locationSource = location.getProvider();
+			lat = location.getLatitude();
+			lon = location.getLongitude();
+			
 		} else if(location.getProvider() == LocationManager.GPS_PROVIDER) {
 			if(gApp.getCurrentLocation().getProvider() == LocationManager.NETWORK_PROVIDER) {
 				gApp.setCurrentLocation(location);
 				gApp.findRelevantStops();
+				
+				locationSource = location.getProvider();
+				lat = location.getLatitude();
+				lon = location.getLongitude();
 			} else {
 				if(location.distanceTo(gApp.getCurrentLocation()) >= gApp.getTreshhold()) {
 					gApp.setCurrentLocation(location);
 					gApp.findRelevantStops();
+					
+					locationSource = location.getProvider();
+					lat = location.getLatitude();
+					lon = location.getLongitude();
 				}
 			}
 			
@@ -152,12 +165,12 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			if(gApp.getCurrentLocation().getProvider() == LocationManager.NETWORK_PROVIDER) {
 				gApp.setCurrentLocation(location);
 				gApp.findRelevantStops();
+				
+				locationSource = location.getProvider();
+				lat = location.getLatitude();
+				lon = location.getLongitude();
 			}
 		}
-		
-		locationSource = location.getProvider();
-		lat = location.getLatitude();
-		lon = location.getLongitude();
 		
 		poiView.invalidate();
 	}
@@ -200,7 +213,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		SensorManager.getOrientation(R, orientation);
 		
 		// find visible stops according to azimuth
-		gApp.findVisibleStops(orientation[0]);
+		gApp.findVisibleStops(Util.rad2deg(orientation[0]));
 		visible = gApp.getVisible();
 		
 		poiView.invalidate();
@@ -236,7 +249,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			
 			if(visible != null) {
 				int startY = 240;
-				int max = 6;
+				int max = 7;
 				
 				if(max > visible.size()) {
 					max = visible.size();
@@ -246,6 +259,45 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 					Poi p = visible.get(i);
 					canvas.drawText(p.getName() + " - " + p.getDescription(), 10, startY, textPaint);
 					startY += 30;
+				}
+			}
+			
+			drawHud(canvas);
+		}
+		
+		private void drawHud(Canvas canvas) {
+			relevant = gApp.getRelevant();
+			Location cloc = gApp.getCurrentLocation();
+			
+			Paint paintBg = new Paint();
+			paintBg.setARGB(255, 255, 255, 255);
+			Paint paintGreen = new Paint();
+			paintGreen.setARGB(255, 0, 255, 0);
+			paintGreen.setStrokeWidth(3);
+			Paint paintRed = new Paint();
+			paintRed.setARGB(255, 255, 0, 0);
+			paintRed.setStrokeWidth(3);
+			Paint paintBlue = new Paint();
+			paintBlue.setARGB(255, 0, 0, 255);
+			paintBlue.setStrokeWidth(3);
+			
+			// center - kind of
+			float fromLeft = canvas.getWidth() - 100;
+			float fromTop = 100;
+			
+			canvas.drawRect(canvas.getWidth() - 200, 0, canvas.getWidth(), 200, paintBg);
+			canvas.drawPoint(fromLeft, fromTop, paintBlue);
+			
+			if(relevant != null && cloc != null) {
+				for(Poi p : relevant) {
+					float pX = (float) ((p.getLon() - cloc.getLongitude()) / gApp.getD() * 100);
+					float pY = (float) ((p.getLat() - cloc.getLatitude()) / gApp.getD() * 100);
+					
+					if(p.visible == true) {
+						canvas.drawPoint(pX + fromLeft, pY + fromTop, paintGreen);
+					} else {
+						canvas.drawPoint(pX + fromLeft, pY + fromTop, paintRed);
+					}
 				}
 			}
 		}
