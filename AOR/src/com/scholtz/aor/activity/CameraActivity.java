@@ -2,6 +2,7 @@ package com.scholtz.aor.activity;
 
 import java.util.List;
 
+import com.scholtz.aor.R;
 import com.scholtz.aor.util.GlobalApp;
 import com.scholtz.aor.util.Poi;
 import com.scholtz.aor.util.Util;
@@ -16,6 +17,8 @@ import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.drawable.NinePatchDrawable;
 import android.hardware.Camera;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -47,7 +50,6 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private double lat = 0, lon = 0;
 	private float[] accelerometerValues = new float[3];
 	private float[] magneticFieldValues = new float[3];
-	private float[] orientationValues = new float[3];
 	private float[] orientation = new float[3];
 	private String locationSource = "---";
 	
@@ -122,7 +124,6 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		
 		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_NORMAL);
 		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), SensorManager.SENSOR_DELAY_NORMAL);
-		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
 	}
 	
 	// Location Listener Methods - START
@@ -142,8 +143,8 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			lat = location.getLatitude();
 			lon = location.getLongitude();
 			
-		} else if(location.getProvider() == LocationManager.GPS_PROVIDER) {
-			if(gApp.getCurrentLocation().getProvider() == LocationManager.NETWORK_PROVIDER) {
+		} else if(location.getProvider().equals(LocationManager.GPS_PROVIDER)) {
+			if(gApp.getCurrentLocation().getProvider().equals(LocationManager.NETWORK_PROVIDER)) {
 				gApp.setCurrentLocation(location);
 				gApp.findRelevantStops();
 				
@@ -161,8 +162,8 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 				}
 			}
 			
-		} else if(location.getProvider() == LocationManager.NETWORK_PROVIDER) {
-			if(gApp.getCurrentLocation().getProvider() == LocationManager.NETWORK_PROVIDER) {
+		} else if(location.getProvider().equals(LocationManager.NETWORK_PROVIDER)) {
+			if(gApp.getCurrentLocation().getProvider().equals(LocationManager.NETWORK_PROVIDER)) {
 				gApp.setCurrentLocation(location);
 				gApp.findRelevantStops();
 				
@@ -193,16 +194,12 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	 * This method takes care of location events
 	 * Recalculate azimuth and visible stops
 	 */
-	@SuppressWarnings("deprecation")
 	public void onSensorChanged(SensorEvent event) {
 		if(event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
 			System.arraycopy(event.values, 0, accelerometerValues, 0, event.values.length);
 		}
 		if(event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
 			System.arraycopy(event.values, 0, magneticFieldValues, 0, event.values.length);
-		}
-		if(event.sensor.getType() == Sensor.TYPE_ORIENTATION) {
-			System.arraycopy(event.values, 0, orientationValues, 0, event.values.length);
 		}
 		
 		float[] R = new float[9];
@@ -245,10 +242,9 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			canvas.drawText(String.format("Azimuth: %5.2f", Util.normalize(Util.rad2deg(orientation[0]))), 10, 120, textPaint);
 			canvas.drawText(String.format("Pitch: %5.2f", Util.rad2deg(orientation[1])), 10, 150, textPaint);
 			canvas.drawText(String.format("Roll: %5.2f", Util.rad2deg(orientation[2])), 10, 180, textPaint);
-			canvas.drawText(String.format("Azimuth2: %5.2f", orientationValues[0]), 10, 210, textPaint);
 			
 			if(visible != null) {
-				int startY = 240;
+				int startY = 210;
 				int max = 7;
 				
 				if(max > visible.size()) {
@@ -263,8 +259,25 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			}
 			
 			drawHud(canvas);
+			drawStops(canvas);
 		}
 		
+		private void drawStops(Canvas canvas) {
+			NinePatchDrawable npd = (NinePatchDrawable)getResources().getDrawable(R.drawable.test);
+
+			// Set its bound where you need
+			Rect npdBounds = new Rect(700, 300, 716, 316);
+			npd.setBounds(npdBounds);
+
+			// Finally draw on the canvas
+			npd.draw(canvas);
+		}
+		
+		/**
+		 * Draw HUD
+		 * This method is only for debugging.
+		 * @param canvas Canvas na ktory kreslime.
+		 */
 		private void drawHud(Canvas canvas) {
 			relevant = gApp.getRelevant();
 			Location cloc = gApp.getCurrentLocation();
