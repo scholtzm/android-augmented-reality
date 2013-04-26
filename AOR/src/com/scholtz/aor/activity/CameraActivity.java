@@ -113,7 +113,6 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	 * Call layout setup
 	 * Request location and sensor updates
 	 */
-	@SuppressWarnings("deprecation")
 	protected void onResume() {
 		super.onResume();
 		
@@ -262,21 +261,23 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			drawStops(canvas);
 		}
 		
+		/**
+		 * Method to draw stops on canvas.
+		 * @param canvas Canvas we draw on.
+		 */
 		private void drawStops(Canvas canvas) {
 			NinePatchDrawable npd = (NinePatchDrawable)getResources().getDrawable(R.drawable.test);
 
-			// Set its bound where you need
 			Rect npdBounds = new Rect(700, 300, 716, 316);
 			npd.setBounds(npdBounds);
 
-			// Finally draw on the canvas
 			npd.draw(canvas);
 		}
 		
 		/**
 		 * Draw HUD
 		 * This method is only for debugging.
-		 * @param canvas Canvas na ktory kreslime.
+		 * @param canvas Canvas we draw on.
 		 */
 		private void drawHud(Canvas canvas) {
 			relevant = gApp.getRelevant();
