@@ -6,7 +6,7 @@ package com.scholtz.aor.util;
  *
  */
 public class Util {
-	private static final int R = 6371000;
+	private static final int R = 6371;
 	
 	public static double rad2deg(double rad) {
 		return rad * 180 / Math.PI;
