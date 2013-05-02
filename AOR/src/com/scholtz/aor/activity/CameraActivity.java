@@ -1,5 +1,8 @@
 package com.scholtz.aor.activity;
 
+import java.io.InputStream;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import com.scholtz.aor.R;
@@ -11,10 +14,13 @@ import com.scholtz.aor.view.CameraView;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.ActivityInfo;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
@@ -24,6 +30,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.text.TextPaint;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.Window;
@@ -41,7 +48,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private FrameLayout frameLayout;
 	private CameraView cameraView;
 	private PoiView poiView;
-	private LocationManager locationManager;
+	private LocationManager mLocationManager;
 	private SensorManager mSensorManager;
 	private GlobalApp gApp;
 	
@@ -53,6 +60,8 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private float[] orientation = new float[3];
 	private String locationSource = "---";
 	
+	private Bitmap bitmap;
+	
 	/**
 	 * Setup required services in onCreate
 	 * Set window parameters
@@ -63,9 +72,9 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
         
         gApp = ((GlobalApp)getApplicationContext());
         
-        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 1, this);
-		locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 1, this);
+        mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 1, this);
+        mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 1, this);
 		
 		mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 		
@@ -105,7 +114,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			cameraView = null;
 		}
 		
-		locationManager.removeUpdates(this);
+		mLocationManager.removeUpdates(this);
 		mSensorManager.unregisterListener(this);
 	}
 	
@@ -118,13 +127,49 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		
 		LayoutSetup();
 		
-		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 1, this);
-		locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 1, this);
+		mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 1, this);
+		mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 1, this);
 		
 		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
 		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), SensorManager.SENSOR_DELAY_NORMAL);
 	}
 	
+	private void updateLocation(Location location, boolean updateRelevant) {
+		gApp.setCurrentLocation(location);
+		
+		long t1 = System.currentTimeMillis();
+		if(updateRelevant) gApp.findRelevantStops();
+		Log.d("aor.time.relevant", String.valueOf(System.currentTimeMillis()-t1));
+		
+		locationSource = location.getProvider();
+		lat = location.getLatitude();
+		lon = location.getLongitude();
+		
+		String url = String.format("http://maps.googleapis.com/maps/api/staticmap?center=%s,%s&size=200x200&sensor=false&maptype=roadmap&zoom=15",
+		Double.toString(lat).replace(',', '.'), Double.toString(lon).replace(',', '.'));
+
+		Log.d("AORLOC", "Loading: " + url);
+		new DownloadImageTask().execute(url);
+	}
+	
+	private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
+		protected Bitmap doInBackground(String... urls) {
+			String urldisplay = urls[0];
+			Bitmap bitmap = null;
+			try {
+				InputStream in = new java.net.URL(urldisplay).openStream();
+				bitmap = BitmapFactory.decodeStream(in);
+				in.close();
+			} catch (Exception e) {
+				Log.e("Error", "Failed to download " + urldisplay, e);
+			}
+			return bitmap;
+		}
+		
+		protected void onPostExecute(Bitmap result) {
+			bitmap = result;
+		}
+}
 	// Location Listener Methods - START
 	/**
 	 * This method takes care of location events
@@ -132,43 +177,22 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	 */
 	public void onLocationChanged(Location location) {
 		if(gApp.getCurrentLocation() == null) {
-			gApp.setCurrentLocation(location);
-			
-			long t1 = System.currentTimeMillis();
-			gApp.findRelevantStops();
-			Log.d("aor.time.relevant", String.valueOf(System.currentTimeMillis()-t1));
-			
-			locationSource = location.getProvider();
-			lat = location.getLatitude();
-			lon = location.getLongitude();
+			updateLocation(location, true);	
 			
 		} else if(location.getProvider().equals(LocationManager.GPS_PROVIDER)) {
 			if(gApp.getCurrentLocation().getProvider().equals(LocationManager.NETWORK_PROVIDER)) {
-				gApp.setCurrentLocation(location);
-				gApp.findRelevantStops();
-				
-				locationSource = location.getProvider();
-				lat = location.getLatitude();
-				lon = location.getLongitude();
+				updateLocation(location, true);
 			} else {
-				if(location.distanceTo(gApp.getCurrentLocation()) >= gApp.getTreshhold()) {
-					gApp.setCurrentLocation(location);
-					gApp.findRelevantStops();
-					
-					locationSource = location.getProvider();
-					lat = location.getLatitude();
-					lon = location.getLongitude();
+				if(location.distanceTo(gApp.getCalcLocation()) >= gApp.getTRESHOLD()) {
+					updateLocation(location, true);
+				} else {
+					updateLocation(location, false);
 				}
 			}
 			
 		} else if(location.getProvider().equals(LocationManager.NETWORK_PROVIDER)) {
 			if(gApp.getCurrentLocation().getProvider().equals(LocationManager.NETWORK_PROVIDER)) {
-				gApp.setCurrentLocation(location);
-				gApp.findRelevantStops();
-				
-				locationSource = location.getProvider();
-				lat = location.getLatitude();
-				lon = location.getLongitude();
+				updateLocation(location, true);
 			}
 		}
 		
@@ -204,8 +228,10 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		float[] R = new float[9];
 		
 		SensorManager.getRotationMatrix(R, null, accelerometerValues, magneticFieldValues);
+		
 		// needs to be remapped for landscape mode
 		SensorManager.remapCoordinateSystem(R, SensorManager.AXIS_Z, SensorManager.AXIS_MINUS_X, R);
+		
 		SensorManager.getOrientation(R, orientation);
 		
 		// find visible stops according to azimuth
@@ -235,6 +261,16 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 
 		@Override
 		protected void onDraw(Canvas canvas) {
+			drawDebug(canvas);
+			drawHud(canvas);
+			drawStops(canvas);
+		}
+		
+		/**
+		 * Method to draw debug info onto canvas
+		 * @param canvas
+		 */
+		private void drawDebug(Canvas canvas) {
 			canvas.drawText("Location source: " + locationSource, 10, 30, textPaint);
 			canvas.drawText("Latitude: " + lat, 10, 60, textPaint);
 			canvas.drawText("Longitude: " + lon, 10, 90, textPaint);
@@ -256,9 +292,6 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 					startY += 30;
 				}
 			}
-			
-			drawHud(canvas);
-			drawStops(canvas);
 		}
 		
 		/**
@@ -266,12 +299,65 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		 * @param canvas Canvas we draw on.
 		 */
 		private void drawStops(Canvas canvas) {
+			if(visible == null || visible.size() == 0)
+				return;
+			
+			// sort by distance; in reverse
+			Collections.sort(visible, new Comparator<Poi>() {
+				public int compare(Poi a, Poi b) {
+					if(a.getDistance() > b.getDistance()) return -1;
+					if(a.getDistance() < b.getDistance()) return 1;
+					return 0;
+				}
+			});
+			
+			// load NPD
 			NinePatchDrawable npd = (NinePatchDrawable)getResources().getDrawable(R.drawable.test);
+			
+			// setup text paint
+			int textSize = 30;
+			TextPaint textPaint = new TextPaint();
+			textPaint.setARGB(255, 0, 0, 0);
+			textPaint.setTextSize(textSize);
+			
+			// calculate data related to width
+			int cw = canvas.getWidth();
+			double widthFOV = (double) cw / (double) gApp.getFOV();
+			
+			// calculate variables related to height
+			int ch = canvas.getHeight();
+			Location currentLocation = gApp.getCurrentLocation();
+			float[] distanceBetween = new float[3];
+			Location.distanceBetween(currentLocation.getLatitude(), currentLocation.getLongitude(), currentLocation.getLatitude() + gApp.getD(), currentLocation.getLongitude() + gApp.getD(), distanceBetween);
+			double heightDistance = (double) ch / (double) distanceBetween[0];
 
-			Rect npdBounds = new Rect(700, 300, 716, 316);
-			npd.setBounds(npdBounds);
-
-			npd.draw(canvas);
+			for(Poi p : visible) {
+				double angleDiff = p.getAngleDiff() + (double) gApp.getFOVHALF();
+				
+				int left = (int) (widthFOV * angleDiff);
+				int top = ch - (int) (heightDistance * p.getDistance());
+				int right = left + 10;
+				int bottom = top + textSize + textSize + 10;
+				
+				Rect npdBounds = new Rect(left, top, right, bottom);
+				textPaint.getTextBounds(p.getName(), 0, p.getName().length(), npdBounds);
+				//Log.d("aor.draw", "name:" + p.getName() + " left:" + npdBounds.left + " top:" + npdBounds.top + " right:" + npdBounds.right + " bottom:" + npdBounds.bottom);
+				npdBounds.left += left + 2;
+				npdBounds.top += top + 22;
+				npdBounds.right += right;
+				npdBounds.bottom += bottom;
+				
+				// adjust to center
+				int shiftLeft = npdBounds.width() / 2;
+				npdBounds.left -= shiftLeft;
+				npdBounds.right -= shiftLeft;
+				
+				npd.setBounds(npdBounds);
+				npd.draw(canvas);
+				
+				canvas.drawText(p.getName(), left + 5 - shiftLeft, top + textSize + 5, textPaint);
+				canvas.drawText(String.valueOf(p.getDistance()) + "m", left + 5 - shiftLeft, top + textSize + 5 + textSize, textPaint);
+			}
 		}
 		
 		/**
@@ -281,7 +367,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		 */
 		private void drawHud(Canvas canvas) {
 			relevant = gApp.getRelevant();
-			Location cloc = gApp.getCurrentLocation();
+			Location cloc = gApp.getCalcLocation();
 			
 			Paint paintBg = new Paint();
 			paintBg.setARGB(255, 255, 255, 255);
@@ -300,21 +386,25 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			float fromTop = 100;
 			
 			// draw white bg
-			canvas.drawRect(canvas.getWidth() - 200, 0, canvas.getWidth(), 200, paintBg);
+			if(bitmap == null) {
+				canvas.drawRect(canvas.getWidth() - 200, 0, canvas.getWidth(), 200, paintBg);
+			} else {
+				canvas.drawBitmap(bitmap, canvas.getWidth() - 200, 0, paintBg);
+			}
 			
 			// draw direction			
-			float angleRad = (float) ((Math.PI/2) - orientation[0]);
+			float angleRad = (float) ((Math.PI/2.0) - orientation[0]);
 			float userX = (float) Math.cos(angleRad);
-			float userY = (float) Math.sin(angleRad);
+			float userY = (float) -Math.sin(angleRad);
 			canvas.drawLine(fromLeft, fromTop, userX * 70 + fromLeft, userY * 70 + fromTop, paintBlue);
 			
 			// draw stops
 			if(relevant != null && cloc != null) {
 				for(Poi p : relevant) {
 					float pX = (float) ((p.getLon() - cloc.getLongitude()) / gApp.getD() * 100);
-					float pY = (float) ((p.getLat() - cloc.getLatitude()) / gApp.getD() * 100);
+					float pY = (float) -((p.getLat() - cloc.getLatitude()) / gApp.getD() * 100);
 					
-					if(p.visible == true) {
+					if(p.isVisible() == true) {
 						canvas.drawPoint(pX + fromLeft, pY + fromTop, paintGreen);
 					} else {
 						canvas.drawPoint(pX + fromLeft, pY + fromTop, paintRed);

@@ -25,12 +25,17 @@ public class GlobalApp extends Application {
 	private List<Poi> relevant = new ArrayList<Poi>();
 	private List<Poi> visible = new ArrayList<Poi>();
 	private Location currentLocation = null;
+	private Location calcLocation = null;
 	
-	public int getFov() {
+	public int getFOV() {
 		return FOV;
 	}
 
-	public double getTreshhold() {
+	public int getFOVHALF() {
+		return FOVHALF;
+	}
+
+	public double getTRESHOLD() {
 		return TRESHOLD;
 	}
 	
@@ -61,26 +66,42 @@ public class GlobalApp extends Application {
 	public void setCurrentLocation(Location currentLocation) {
 		this.currentLocation = currentLocation;
 	}
+	
+	public Location getCalcLocation() {
+		return calcLocation;
+	}
+
+	public void setCalcLocation(Location calcLocation) {
+		this.calcLocation = calcLocation;
+	}
 
 	/**
 	 * Finds relevant bus stops around the user according to current location
 	 */
 	public void findRelevantStops() {
+		// TBD-s
 		long start = System.nanoTime();
+		// TBD-d
 
 		relevant.clear();
 		
-		for (Poi p : stops) {
-			if (p.getLat() >= (currentLocation.getLatitude() - D) &&
-				p.getLat() <= (currentLocation.getLatitude() + D) &&
-				p.getLon() >= (currentLocation.getLongitude() - D) &&
-				p.getLon() <= (currentLocation.getLongitude() + D)) {
-				relevant.add(p);
+		if(currentLocation != null) {
+			for (Poi p : stops) {
+				if (p.getLat() >= (currentLocation.getLatitude() - D) &&
+					p.getLat() <= (currentLocation.getLatitude() + D) &&
+					p.getLon() >= (currentLocation.getLongitude() - D) &&
+					p.getLon() <= (currentLocation.getLongitude() + D)) {
+					relevant.add(p);
+				}
 			}
+			
+			calcLocation = currentLocation;
 		}
 
+		// TBD-s
 		double time = (System.nanoTime() - start) / 1000000.0;
 		Log.d("AOR", "Found " + relevant.size() + " stops in " + time + "ms");
+		// TBD-d
 	}
 	
 	private long counter = 0;
@@ -90,56 +111,68 @@ public class GlobalApp extends Application {
 	 * @param azimuth Device azimuth
 	 */
 	public void findVisibleStops(double azimuth) {
-		if(currentLocation == null) {
-			Log.d("AOR.noloc", "No location...");
+		if(currentLocation == null || relevant.size() == 0) {
+			Log.d("AOR.noloc", "No location or relevant is empty ...");
 			return;
 		}
 		
+		// TBD-s
 		counter++;
 		long start = System.nanoTime();
 
 		for (Poi p : relevant)
-			p.visible = false;
+			p.setVisible(false);
+		// TBD-e
+		
 		visible.clear();
+		float[] distanceToVisible = new float[3];
 		
-		double currentX = currentLocation.getLongitude(); //Util.toCartesianX(currentLocation.getLatitude(), currentLocation.getLongitude());
-		double currentY = currentLocation.getLatitude();  //Util.toCartesianY(currentLocation.getLatitude(), currentLocation.getLongitude());
+		double currentX = currentLocation.getLongitude();
+		double currentY = currentLocation.getLatitude();
 
-		// Log.d("AOR", "currentX: " + currentX + " currentY: " + currentY + " azimuth:" + azimuth);
 		
+		// TBD-s
 		if (counter % 100 == 0)
 			Log.d("AOR.azimuth", "oldAzimuth: " + azimuth);
 		azimuth = 90 - azimuth;
 		if (counter % 100 == 0)
 			Log.d("AOR.azimuth", "newAzimuth: " + azimuth);
-
-		// Log.d("AOR", "newAzimuth:" + azimuth);
+		// TBD-d
 
 		for(Poi p : relevant) {
-			double poiX = p.getLon(); //Util.toCartesianX(p.getLat(), p.getLon());
-			double poiY = p.getLat(); //Util.toCartesianY(p.getLat(), p.getLon());
+			double poiX = p.getLon();
+			double poiY = p.getLat();
 			
 			double angle = Math.atan2(poiY - currentY, poiX - currentX);
 			double degAngle = Util.rad2deg(angle);
 			double poiAngle = Util.normalize(degAngle);
 			
+			// TBD-s
 			if (counter % 100 == 0) {
 				Log.d("AOR", p.getName() + " lat:" + p.getLat() + " lon:" + p.getLon() + " angle:" + poiAngle);
 			}
+			// TBD-d
 
-			if(Math.abs(Util.angleDiff(azimuth, poiAngle)) <= FOVHALF) {
+			double angleDiff = Util.angleDiff(azimuth, poiAngle);
+			if(Math.abs(angleDiff) <= FOVHALF) {
+				p.setAngleDiff(angleDiff);
+				Location.distanceBetween(currentY, currentX, p.getLat(), p.getLon(), distanceToVisible);
+				p.setDistance((int) distanceToVisible[0]);
 				visible.add(p);
-				p.visible = true;
+				p.setVisible(true);
 			}
 		}
 
+		// TBD-s
 		double time = (System.nanoTime() - start) / 1000000.0;
 		if (counter % 100 == 0)
 			Log.d("AOR", "Added " + visible.size() + " stops in " + time + "ms");
+		// TBD-d
 	}
 
 	/**
 	 * Sorts stops by distance according to current location
+	 * This method is currently not used.
 	 */
 	public void sortByDistance() {
 		Collections.sort(stops, new Comparator<Poi>() {

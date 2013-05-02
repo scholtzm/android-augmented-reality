@@ -12,8 +12,10 @@ public class Poi {
 	private double lat;
 	private double lon;
 	private String description;
-
-	public boolean visible;
+	
+	private double angleDiff;
+	private int distance;
+	private boolean visible;
 	
 	public Poi() {
 	}
@@ -74,6 +76,28 @@ public class Poi {
 	public void setDescription(String description) {
 		this.description = description;
 	}
-	
-	
+
+	public double getAngleDiff() {
+		return angleDiff;
+	}
+
+	public void setAngleDiff(double angleDiff) {
+		this.angleDiff = angleDiff;
+	}
+
+	public int getDistance() {
+		return distance;
+	}
+
+	public void setDistance(int distance) {
+		this.distance = distance;
+	}
+
+	public boolean isVisible() {
+		return visible;
+	}
+
+	public void setVisible(boolean visible) {
+		this.visible = visible;
+	}
 }

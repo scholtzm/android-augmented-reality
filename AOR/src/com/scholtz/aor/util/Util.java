@@ -34,10 +34,10 @@ public class Util {
 
 	public static double angleDiff(double a, double b) {
 		double d = a - b;
-		if (d>180)
-			d-=360;
-		if (d<-180)
-			d+=360;
+		if (d > 180)
+			d -= 360;
+		if (d < -180)
+			d += 360;
 		return d;
 	}
 }
