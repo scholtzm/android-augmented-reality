@@ -3,19 +3,10 @@ package com.scholtz.aor.activity;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-import com.scholtz.aor.R;
-import com.scholtz.aor.util.GlobalApp;
-import com.scholtz.aor.util.Poi;
-import com.scholtz.aor.util.Util;
-import com.scholtz.aor.view.CameraView;
-
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
-import android.os.AsyncTask;
-import android.os.Bundle;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.ActivityInfo;
@@ -30,13 +21,24 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.os.AsyncTask;
+import android.os.Bundle;
 import android.text.TextPaint;
 import android.util.Log;
 import android.view.SurfaceView;
+import android.view.ViewGroup.LayoutParams;
 import android.view.Window;
 import android.view.WindowManager;
-import android.view.ViewGroup.LayoutParams;
 import android.widget.FrameLayout;
+
+import com.scholtz.aor.R;
+import com.scholtz.aor.util.GlobalApp;
+import com.scholtz.aor.util.Poi;
+import com.scholtz.aor.util.Util;
+import com.scholtz.aor.view.CameraView;
 
 /**
  * CameraActivity class
@@ -59,6 +61,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private float[] magneticFieldValues = new float[3];
 	private float[] orientation = new float[3];
 	private String locationSource = "---";
+	private float filteredOrientation = Float.NaN;
 	
 	private Bitmap bitmap;
 	
@@ -145,7 +148,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		lat = location.getLatitude();
 		lon = location.getLongitude();
 		
-		String url = String.format("http://maps.googleapis.com/maps/api/staticmap?center=%s,%s&size=200x200&sensor=false&maptype=roadmap&zoom=15",
+		String url = String.format("http://maps.googleapis.com/maps/api/staticmap?center=%s,%s&size=200x200&sensor=false&maptype=roadmap&zoom=13",
 		Double.toString(lat).replace(',', '.'), Double.toString(lon).replace(',', '.'));
 
 		Log.d("AORLOC", "Loading: " + url);
@@ -231,11 +234,20 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		
 		// needs to be remapped for landscape mode
 		SensorManager.remapCoordinateSystem(R, SensorManager.AXIS_Z, SensorManager.AXIS_MINUS_X, R);
-		
 		SensorManager.getOrientation(R, orientation);
+
+		float calcOrientation = orientation[0];
+
+		if (Float.isNaN(filteredOrientation))
+			filteredOrientation = calcOrientation;
+
+		float diffOrientation = calcOrientation - filteredOrientation;
+		if (diffOrientation > Math.PI)
+			diffOrientation -= 2 * Math.PI;
+		filteredOrientation = (float) (0.05 * (diffOrientation) + filteredOrientation);
 		
 		// find visible stops according to azimuth
-		gApp.findVisibleStops(Util.rad2deg(orientation[0]));
+		gApp.findVisibleStops(Util.rad2deg(filteredOrientation));
 		visible = gApp.getVisible();
 		
 		poiView.invalidate();
@@ -305,11 +317,32 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			// sort by distance; in reverse
 			Collections.sort(visible, new Comparator<Poi>() {
 				public int compare(Poi a, Poi b) {
-					if(a.getDistance() > b.getDistance()) return -1;
-					if(a.getDistance() < b.getDistance()) return 1;
+					if (a.getDistance() > b.getDistance())
+						return 1;
+					if (a.getDistance() < b.getDistance())
+						return -1;
 					return 0;
 				}
 			});
+
+			Set<String> videne = new HashSet<String>(visible.size());
+			int i = 0;
+			while (i<visible.size()) {
+				Poi p = visible.get(i);
+				if (!videne.contains(p.getName())) {
+					videne.add(p.getName());
+					i++;
+				} else {
+					if (p.getDistance() < 250) {
+						i++;
+					} else {
+						visible.remove(i);
+						// neposuvame sa
+					}
+				}
+			}
+			
+			Collections.reverse(visible);
 			
 			// load NPD
 			NinePatchDrawable npd = (NinePatchDrawable)getResources().getDrawable(R.drawable.test);
