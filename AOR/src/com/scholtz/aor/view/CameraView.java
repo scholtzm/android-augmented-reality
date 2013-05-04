@@ -1,6 +1,7 @@
 package com.scholtz.aor.view;
 
 import java.io.IOException;
+import java.util.List;
 
 import android.content.Context;
 import android.hardware.Camera;
@@ -28,7 +29,8 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback {
 
 	// Surface Holder Callback Methods - START
 	public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-		camera.startPreview();
+		if(camera != null)
+			camera.startPreview();
 	}
 
 	public void surfaceCreated(SurfaceHolder holder) {
@@ -36,8 +38,20 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback {
 			return;
 		
 		Camera.Parameters cameraParameters = camera.getParameters();
+		
+		// set best camera preview size
+		List<Camera.Size> previewSizes = cameraParameters.getSupportedPreviewSizes();
+		
+		Camera.Size best = previewSizes.get(0);
+		for(Camera.Size cs : previewSizes) {
+			if(cs.width * cs.height > best.width * best.height) {
+				best = cs;
+			}
+		}
+		
+		cameraParameters.setPreviewSize(best.width, best.height);
 		camera.setParameters(cameraParameters);
-
+		
 		try {
 			camera.setPreviewDisplay(surfaceHolder);
 		} catch (IOException e) {

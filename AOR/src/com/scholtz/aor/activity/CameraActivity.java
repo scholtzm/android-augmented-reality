@@ -7,8 +7,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -26,13 +28,16 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.TextPaint;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.SurfaceView;
 import android.view.ViewGroup.LayoutParams;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import android.widget.Toast;
 
 import com.scholtz.aor.R;
 import com.scholtz.aor.util.GlobalApp;
@@ -42,11 +47,14 @@ import com.scholtz.aor.view.CameraView;
 
 /**
  * CameraActivity class
- * This class combines CameraView and DrawView and implements location and sensor listeners (accelerometer, magnetic field)
+ * This class combines CameraView and DrawView and
+ * implements location and sensor listeners (accelerometer, magnetic field)
  * @author Mike
  *
  */
 public class CameraActivity extends Activity implements LocationListener, SensorEventListener {
+	private final float OUT_OF_SCREEN = -100f;
+	
 	private FrameLayout frameLayout;
 	private CameraView cameraView;
 	private PoiView poiView;
@@ -54,6 +62,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private SensorManager mSensorManager;
 	private GlobalApp gApp;
 	
+	// orientation, location, calculations
 	private List<Poi> visible = null;
 	private List<Poi> relevant = null;
 	private double lat = 0, lon = 0;
@@ -62,7 +71,15 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private float[] orientation = new float[3];
 	private String locationSource = "---";
 	private float filteredOrientation = Float.NaN;
+	boolean firstFix = true;
 	
+	// extra info
+	private boolean drawExtraInfo = false;
+	private Poi poiExtraInfo = null;
+	private float xTouch = OUT_OF_SCREEN;
+	private float yTouch = OUT_OF_SCREEN;
+	
+	// hud
 	private Bitmap bitmap;
 	
 	/**
@@ -83,7 +100,14 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        
+        // check if GPS is enabled
+		if(mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) == false) {
+			Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+			startActivity(intent);
+		}
     }
 	
 	/**
@@ -135,13 +159,38 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		
 		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
 		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), SensorManager.SENSOR_DELAY_NORMAL);
+	
+        // let's use last known location; gps provider is preferred
+        Location lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        if(lastKnownLocation == null) {
+        	lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        	if(lastKnownLocation != null) {
+        		Toast.makeText(getApplicationContext(), "Using last known location ...", Toast.LENGTH_LONG).show();
+        		updateLocation(lastKnownLocation, true);
+        	}
+        	Toast.makeText(getApplicationContext(), "Obtaining location ...", Toast.LENGTH_LONG).show();
+        } else {
+        	Toast.makeText(getApplicationContext(), "Using last known location ...", Toast.LENGTH_LONG).show();
+        	updateLocation(lastKnownLocation, true);
+        }
 	}
 	
+	/**
+	 * Update location and relevant stops if necessary.
+	 * @param location Latest location update
+	 * @param updateRelevant Update flag
+	 */
 	private void updateLocation(Location location, boolean updateRelevant) {
 		gApp.setCurrentLocation(location);
 		
 		long t1 = System.currentTimeMillis();
-		if(updateRelevant) gApp.findRelevantStops();
+		if(updateRelevant) {
+			gApp.findRelevantStops();
+			relevant = gApp.getRelevant();
+			if(relevant.size() == 0) {
+				Toast.makeText(getApplicationContext(), "No relevant stops found ...", Toast.LENGTH_LONG).show();
+			}
+		}
 		Log.d("aor.time.relevant", String.valueOf(System.currentTimeMillis()-t1));
 		
 		locationSource = location.getProvider();
@@ -151,20 +200,23 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		String url = String.format("http://maps.googleapis.com/maps/api/staticmap?center=%s,%s&size=200x200&sensor=false&maptype=roadmap&zoom=13",
 		Double.toString(lat).replace(',', '.'), Double.toString(lon).replace(',', '.'));
 
-		Log.d("AORLOC", "Loading: " + url);
+		Log.d("aor.download", "Loading: " + url);
 		new DownloadImageTask().execute(url);
 	}
 	
+	/**
+	 * AsyncTask to download static map from google servers
+	 */
 	private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
 		protected Bitmap doInBackground(String... urls) {
-			String urldisplay = urls[0];
+			String url = urls[0];
 			Bitmap bitmap = null;
 			try {
-				InputStream in = new java.net.URL(urldisplay).openStream();
+				InputStream in = new java.net.URL(url).openStream();
 				bitmap = BitmapFactory.decodeStream(in);
 				in.close();
 			} catch (Exception e) {
-				Log.e("Error", "Failed to download " + urldisplay, e);
+				Log.e("Error", "Failed to download " + url, e);
 			}
 			return bitmap;
 		}
@@ -172,15 +224,18 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		protected void onPostExecute(Bitmap result) {
 			bitmap = result;
 		}
-}
+	}
+	
 	// Location Listener Methods - START
 	/**
 	 * This method takes care of location events
 	 * Store GPS coordinates if possible, otherwise use network
 	 */
 	public void onLocationChanged(Location location) {
-		if(gApp.getCurrentLocation() == null) {
+		if(gApp.getCurrentLocation() == null || firstFix == true) {
 			updateLocation(location, true);	
+			firstFix = false;
+			Toast.makeText(getApplicationContext(), "Received updated location fix ...", Toast.LENGTH_LONG).show();
 			
 		} else if(location.getProvider().equals(LocationManager.GPS_PROVIDER)) {
 			if(gApp.getCurrentLocation().getProvider().equals(LocationManager.NETWORK_PROVIDER)) {
@@ -213,9 +268,6 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	// Location Listener Methods - END 
 	
 	// Sensor Event Listener Methods - START
-	public void onAccuracyChanged(Sensor arg0, int arg1) {
-	}
-
 	/**
 	 * This method takes care of location events
 	 * Recalculate azimuth and visible stops
@@ -231,7 +283,6 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		float[] R = new float[9];
 		
 		SensorManager.getRotationMatrix(R, null, accelerometerValues, magneticFieldValues);
-		
 		// needs to be remapped for landscape mode
 		SensorManager.remapCoordinateSystem(R, SensorManager.AXIS_Z, SensorManager.AXIS_MINUS_X, R);
 		SensorManager.getOrientation(R, orientation);
@@ -244,7 +295,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		float diffOrientation = calcOrientation - filteredOrientation;
 		if (diffOrientation > Math.PI)
 			diffOrientation -= 2 * Math.PI;
-		filteredOrientation = (float) (0.05 * (diffOrientation) + filteredOrientation);
+		filteredOrientation = (float) (0.05 * diffOrientation + filteredOrientation);
 		
 		// find visible stops according to azimuth
 		gApp.findVisibleStops(Util.rad2deg(filteredOrientation));
@@ -252,37 +303,256 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		
 		poiView.invalidate();
 	}
+	
+	public void onAccuracyChanged(Sensor arg0, int arg1) {
+	}
 	// Sensor Event Listener Methods - END
 	
 	/**
 	 * Inner class for DrawView
-	 * Currently used for debugging (mostly)
 	 * @author Mike
 	 *
 	 */
 	private class PoiView extends SurfaceView {
-		private Paint textPaint = new Paint();
+		private	NinePatchDrawable npd = (NinePatchDrawable)getResources().getDrawable(R.drawable.bubble);
 
 		public PoiView(Context context) {
 			super(context);
-			
-			textPaint.setARGB(255, 255, 43, 43);
-			textPaint.setTextSize(30);
 			setWillNotDraw(false);
 		}
 
+		/**
+		 * Draw methods
+		 */
 		@Override
 		protected void onDraw(Canvas canvas) {
-			drawDebug(canvas);
-			drawHud(canvas);
+			//drawDebug(canvas);
+			if(gApp.getCurrentLocation() != null) drawHud(canvas);
 			drawStops(canvas);
+			if(drawExtraInfo) drawExtraInfo(canvas);
+		}
+		
+		@Override
+		public boolean onTouchEvent(MotionEvent event) {
+			if(event.getAction() == MotionEvent.ACTION_DOWN) {
+				if(drawExtraInfo) {
+					drawExtraInfo = false;
+					poiExtraInfo = null;
+					xTouch = OUT_OF_SCREEN;
+					yTouch = OUT_OF_SCREEN;
+				} else {
+					drawExtraInfo = true;
+					xTouch = event.getX();
+					yTouch = event.getY();
+				}
+			}
+			
+			return true;
+		}
+		
+		/**
+		 * Method to draw stops on canvas.
+		 * @param canvas Canvas we draw on.
+		 */
+		private void drawStops(Canvas canvas) {
+			if(visible == null || visible.size() == 0)
+				return;
+			
+			// sort by distance
+			Collections.sort(visible, new Comparator<Poi>() {
+				public int compare(Poi a, Poi b) {
+					if (a.getDistance() > b.getDistance()) return 1;
+					if (a.getDistance() < b.getDistance()) return -1;
+					return 0;
+				}
+			});
+
+			// remove certain duplicates
+			Set<String> duplicates = new HashSet<String>(visible.size());
+			int i = 0;
+			while (i < visible.size()) {
+				Poi p = visible.get(i);
+				if (duplicates.contains(p.getName()) == false) {
+					duplicates.add(p.getName());
+					i++;
+				} else {
+					if (p.getDistance() <= 250) {
+						i++;
+					} else {
+						visible.remove(i);
+					}
+				}
+			}
+			
+			// draw farthest first
+			Collections.reverse(visible);
+			
+			// setup text paint
+			int textSize = 20;
+			TextPaint textPaint = new TextPaint();
+			textPaint.setARGB(255, 255, 255, 255);
+			textPaint.setAntiAlias(true);
+			
+			// calculate data related to width
+			int cw = canvas.getWidth();
+			double widthFOV = (double) cw / (double) gApp.getFOV();
+			
+			// calculate variables related to height
+			int ch = canvas.getHeight();
+			Location currentLocation = gApp.getCurrentLocation();
+			float[] distanceBetween = new float[3];
+			Location.distanceBetween(currentLocation.getLatitude(), currentLocation.getLongitude(), visible.get(0).getLat(), visible.get(0).getLon(), distanceBetween);
+			double heightDistance = (double) ch / (double) distanceBetween[0];
+
+			// draw each visible stop
+			for(Poi p : visible) {
+				double angleDiff = p.getAngleDiff() + (double) gApp.getFOVHALF();
+				
+				int left = (int) (widthFOV * angleDiff);
+				int top = ch - (int) (heightDistance * p.getDistance());
+				textSize += (double) (10.0 * ((double)top / (double)ch));
+				textPaint.setTextSize(textSize);
+				int right = left + 20;
+				int bottom = top + textSize + textSize + 10;
+				
+				Rect npdBounds = new Rect();
+				textPaint.getTextBounds(p.getName(), 0, p.getName().length(), npdBounds);
+				npdBounds.left += left + 2;
+				npdBounds.top += top + 22;
+				npdBounds.right += right;
+				npdBounds.bottom += bottom;
+				
+				// adjust to center
+				int shiftLeft = npdBounds.width() / 2;
+				npdBounds.left -= shiftLeft;
+				npdBounds.right -= shiftLeft;
+				
+				// fix drawing at the bottom of the screen
+				if(npdBounds.bottom > ch) {
+					int shiftUp = npdBounds.bottom - ch;
+					npdBounds.top -= shiftUp;
+					npdBounds.bottom -= shiftUp;
+				}
+				
+				// check if this stop is "touched"
+				if(drawExtraInfo == true) {
+					if(npdBounds.left <= xTouch &&
+					   npdBounds.right >= xTouch &&
+					   npdBounds.top <= yTouch &&
+					   npdBounds.bottom >= yTouch) {
+						poiExtraInfo = p;
+					}
+				}
+				
+				npd.setBounds(npdBounds);
+				npd.draw(canvas);
+				
+				canvas.drawText(p.getName(), left + 10 - shiftLeft, top + textSize + 5, textPaint);
+				canvas.drawText(String.valueOf(p.getDistance()) + "m", left + 10 - shiftLeft, top + textSize + 5 + textSize, textPaint);
+			}
+			
+			// end of cycle; "remove" touch
+			xTouch = OUT_OF_SCREEN;
+			yTouch = OUT_OF_SCREEN;
+		}
+		
+		/**
+		 * Method to draw stops on canvas.
+		 * @param canvas Canvas we draw on.
+		 */
+		private void drawExtraInfo(Canvas canvas) {	
+			if(poiExtraInfo == null)
+				return;
+			
+			int x = 0;
+			int y = 0;
+			int width = canvas.getWidth();
+			int height = 140;
+			int textSize = 30;
+			
+			Rect npdBounds = new Rect(x, y, x + width, y + height);
+			npd.setBounds(npdBounds);
+			npd.draw(canvas);
+			
+			TextPaint textPaint = new TextPaint();
+			textPaint.setARGB(255, 255, 255, 255);
+			textPaint.setTextSize(textSize);
+			textPaint.setAntiAlias(true);
+			
+			canvas.drawText("Name: " + poiExtraInfo.getName() + " (" + poiExtraInfo.getDistance() +"m)", x + 10, y + 5 + 30, textPaint);
+			canvas.drawText("Latitude: " + poiExtraInfo.getLat(), x + 10, y + 5 + 60, textPaint);
+			canvas.drawText("Longitude: " + poiExtraInfo.getLon(), x + 10, y + 5 + 90, textPaint);
+			canvas.drawText("Lines: " + poiExtraInfo.getDescription(), x + 10, y + 5 + 120, textPaint);
+		}
+		
+		/**
+		 * Draw HUD
+		 * This method is only for debugging.
+		 * @param canvas Canvas we draw on.
+		 */
+		@SuppressLint({ "FloatMath", "FloatMath" })
+		private void drawHud(Canvas canvas) {
+			relevant = gApp.getRelevant();
+			Location cloc = gApp.getCalcLocation();
+			
+			Paint paintBg = new Paint();
+			paintBg.setARGB(255, 0, 0, 0);
+			Paint paintGreen = new Paint();
+			paintGreen.setARGB(255, 0, 255, 0);
+			paintGreen.setStrokeWidth(3);
+			Paint paintRed = new Paint();
+			paintRed.setARGB(255, 255, 0, 0);
+			paintRed.setStrokeWidth(3);
+			Paint paintBlue = new Paint();
+			paintBlue.setARGB(255, 0, 0, 255);
+			paintBlue.setStrokeWidth(2);
+			
+			// center - kind of
+			float fromLeft = canvas.getWidth() - 100;
+			float fromTop = 100;
+			
+			// draw black border
+			canvas.drawRect(canvas.getWidth() - 202, 0, canvas.getWidth(), 202, paintBg);
+			
+			// draw white bg or a map
+			paintBg.setARGB(255, 255, 255, 255);
+			if(bitmap == null) {
+				canvas.drawRect(canvas.getWidth() - 200, 0, canvas.getWidth(), 200, paintBg);
+			} else {
+				canvas.drawBitmap(bitmap, canvas.getWidth() - 200, 0, paintBg);
+			}
+			
+			// draw direction			
+			float angleRad = (float) ((Math.PI/2.0) - orientation[0]);
+			float userX = (float) Math.cos(angleRad);
+			float userY = (float) -Math.sin(angleRad);
+			canvas.drawLine(fromLeft, fromTop, userX * 100 + fromLeft, userY * 100 + fromTop, paintBlue);
+			
+			// draw stops
+			if(relevant != null && cloc != null) {
+				for(Poi p : relevant) {
+					float pX = (float) ((p.getLon() - cloc.getLongitude()) / gApp.getD() * 100);
+					float pY = (float) -((p.getLat() - cloc.getLatitude()) / gApp.getD() * 100);
+					
+					if(p.isVisible() == true) {
+						canvas.drawPoint(pX + fromLeft, pY + fromTop, paintGreen);
+					} else {
+						canvas.drawPoint(pX + fromLeft, pY + fromTop, paintRed);
+					}
+				}
+			}
 		}
 		
 		/**
 		 * Method to draw debug info onto canvas
 		 * @param canvas
 		 */
+		@SuppressWarnings("unused")
 		private void drawDebug(Canvas canvas) {
+			TextPaint textPaint = new TextPaint();
+			textPaint.setARGB(255, 255, 43, 43);
+			textPaint.setTextSize(30);
+			
 			canvas.drawText("Location source: " + locationSource, 10, 30, textPaint);
 			canvas.drawText("Latitude: " + lat, 10, 60, textPaint);
 			canvas.drawText("Longitude: " + lon, 10, 90, textPaint);
@@ -302,146 +572,6 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 					Poi p = visible.get(i);
 					canvas.drawText(p.getName() + " - " + p.getDescription(), 10, startY, textPaint);
 					startY += 30;
-				}
-			}
-		}
-		
-		/**
-		 * Method to draw stops on canvas.
-		 * @param canvas Canvas we draw on.
-		 */
-		private void drawStops(Canvas canvas) {
-			if(visible == null || visible.size() == 0)
-				return;
-			
-			// sort by distance; in reverse
-			Collections.sort(visible, new Comparator<Poi>() {
-				public int compare(Poi a, Poi b) {
-					if (a.getDistance() > b.getDistance())
-						return 1;
-					if (a.getDistance() < b.getDistance())
-						return -1;
-					return 0;
-				}
-			});
-
-			Set<String> videne = new HashSet<String>(visible.size());
-			int i = 0;
-			while (i<visible.size()) {
-				Poi p = visible.get(i);
-				if (!videne.contains(p.getName())) {
-					videne.add(p.getName());
-					i++;
-				} else {
-					if (p.getDistance() < 250) {
-						i++;
-					} else {
-						visible.remove(i);
-						// neposuvame sa
-					}
-				}
-			}
-			
-			Collections.reverse(visible);
-			
-			// load NPD
-			NinePatchDrawable npd = (NinePatchDrawable)getResources().getDrawable(R.drawable.test);
-			
-			// setup text paint
-			int textSize = 30;
-			TextPaint textPaint = new TextPaint();
-			textPaint.setARGB(255, 0, 0, 0);
-			textPaint.setTextSize(textSize);
-			
-			// calculate data related to width
-			int cw = canvas.getWidth();
-			double widthFOV = (double) cw / (double) gApp.getFOV();
-			
-			// calculate variables related to height
-			int ch = canvas.getHeight();
-			Location currentLocation = gApp.getCurrentLocation();
-			float[] distanceBetween = new float[3];
-			Location.distanceBetween(currentLocation.getLatitude(), currentLocation.getLongitude(), currentLocation.getLatitude() + gApp.getD(), currentLocation.getLongitude() + gApp.getD(), distanceBetween);
-			double heightDistance = (double) ch / (double) distanceBetween[0];
-
-			for(Poi p : visible) {
-				double angleDiff = p.getAngleDiff() + (double) gApp.getFOVHALF();
-				
-				int left = (int) (widthFOV * angleDiff);
-				int top = ch - (int) (heightDistance * p.getDistance());
-				int right = left + 10;
-				int bottom = top + textSize + textSize + 10;
-				
-				Rect npdBounds = new Rect(left, top, right, bottom);
-				textPaint.getTextBounds(p.getName(), 0, p.getName().length(), npdBounds);
-				//Log.d("aor.draw", "name:" + p.getName() + " left:" + npdBounds.left + " top:" + npdBounds.top + " right:" + npdBounds.right + " bottom:" + npdBounds.bottom);
-				npdBounds.left += left + 2;
-				npdBounds.top += top + 22;
-				npdBounds.right += right;
-				npdBounds.bottom += bottom;
-				
-				// adjust to center
-				int shiftLeft = npdBounds.width() / 2;
-				npdBounds.left -= shiftLeft;
-				npdBounds.right -= shiftLeft;
-				
-				npd.setBounds(npdBounds);
-				npd.draw(canvas);
-				
-				canvas.drawText(p.getName(), left + 5 - shiftLeft, top + textSize + 5, textPaint);
-				canvas.drawText(String.valueOf(p.getDistance()) + "m", left + 5 - shiftLeft, top + textSize + 5 + textSize, textPaint);
-			}
-		}
-		
-		/**
-		 * Draw HUD
-		 * This method is only for debugging.
-		 * @param canvas Canvas we draw on.
-		 */
-		private void drawHud(Canvas canvas) {
-			relevant = gApp.getRelevant();
-			Location cloc = gApp.getCalcLocation();
-			
-			Paint paintBg = new Paint();
-			paintBg.setARGB(255, 255, 255, 255);
-			Paint paintGreen = new Paint();
-			paintGreen.setARGB(255, 0, 255, 0);
-			paintGreen.setStrokeWidth(3);
-			Paint paintRed = new Paint();
-			paintRed.setARGB(255, 255, 0, 0);
-			paintRed.setStrokeWidth(3);
-			Paint paintBlue = new Paint();
-			paintBlue.setARGB(255, 0, 0, 255);
-			paintBlue.setStrokeWidth(2);
-			
-			// center - kind of
-			float fromLeft = canvas.getWidth() - 100;
-			float fromTop = 100;
-			
-			// draw white bg
-			if(bitmap == null) {
-				canvas.drawRect(canvas.getWidth() - 200, 0, canvas.getWidth(), 200, paintBg);
-			} else {
-				canvas.drawBitmap(bitmap, canvas.getWidth() - 200, 0, paintBg);
-			}
-			
-			// draw direction			
-			float angleRad = (float) ((Math.PI/2.0) - orientation[0]);
-			float userX = (float) Math.cos(angleRad);
-			float userY = (float) -Math.sin(angleRad);
-			canvas.drawLine(fromLeft, fromTop, userX * 70 + fromLeft, userY * 70 + fromTop, paintBlue);
-			
-			// draw stops
-			if(relevant != null && cloc != null) {
-				for(Poi p : relevant) {
-					float pX = (float) ((p.getLon() - cloc.getLongitude()) / gApp.getD() * 100);
-					float pY = (float) -((p.getLat() - cloc.getLatitude()) / gApp.getD() * 100);
-					
-					if(p.isVisible() == true) {
-						canvas.drawPoint(pX + fromLeft, pY + fromTop, paintGreen);
-					} else {
-						canvas.drawPoint(pX + fromLeft, pY + fromTop, paintRed);
-					}
 				}
 			}
 		}
