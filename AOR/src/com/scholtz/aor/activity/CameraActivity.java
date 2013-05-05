@@ -409,8 +409,8 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			Collections.reverse(visible);
 			
 			// setup text paint
-			float textSize = 20f;		// initial minimum
-			float textSizeMax = 15f;	// total max is textSize + textSizeMax -> 35
+			float textSize = 14f;		// initial minimum
+			float textSizeDiff = 21f;	// total max is textSize + textSizeMax
 			TextPaint textPaint = new TextPaint();
 			textPaint.setARGB(255, 255, 255, 255);
 			textPaint.setAntiAlias(true);
@@ -437,7 +437,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 				} else {
 					top = (ch / 2) - (((int)textSize + (int)textSize + 10) / 2);
 				}
-				textSize += textSizeMax * (float)top / (float)ch;
+				textSize += textSizeDiff * (float)top / (float)ch;
 				textPaint.setTextSize(textSize);
 				int right = left + 20;
 				int bottom = top + (int)textSize + (int)textSize + 10;
