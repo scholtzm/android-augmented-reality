@@ -1,6 +1,7 @@
 package com.scholtz.aor.activity;
 
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -71,6 +72,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private float[] orientation = new float[3];
 	private String locationSource = "---";
 	private float filteredOrientation = Float.NaN;
+	private float[] orientationAverage = null;
 	boolean firstFix = true;
 	
 	// hud
@@ -283,16 +285,30 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 
 		// orientation smoothing
 		float calcOrientation = orientation[0];
-		float alpha = 0.05f;
-
-		if (Float.isNaN(filteredOrientation))
-			filteredOrientation = calcOrientation;
-
-		float diffOrientation = calcOrientation - filteredOrientation;
-		if (diffOrientation > Math.PI)
-			diffOrientation -= 2 * Math.PI;
-		filteredOrientation = (float) (alpha * diffOrientation + filteredOrientation);
+//		float alpha = 0.05f;
+//
+//		if (Float.isNaN(filteredOrientation))
+//			filteredOrientation = calcOrientation;
+//
+//		float diffOrientation = calcOrientation - filteredOrientation;
+//		if (diffOrientation > Math.PI)
+//			diffOrientation -= 2 * Math.PI;
+//		filteredOrientation = (float) (alpha * diffOrientation + filteredOrientation);
 		
+		if(orientationAverage == null) {
+			orientationAverage = new float[10];
+			Arrays.fill(orientationAverage, calcOrientation);
+		}
+		
+		System.arraycopy(orientationAverage, 0, orientationAverage, 1, orientationAverage.length - 1);
+		orientationAverage[0] = calcOrientation;
+		
+		float sum = 0;
+		for(int i = 0; i < orientationAverage.length; i++)
+			sum += orientationAverage[i];
+		
+		filteredOrientation = sum / 10f;
+
 		// find visible stops according to azimuth
 		gApp.findVisibleStops(Util.rad2deg(filteredOrientation));
 		visible = gApp.getVisible();
@@ -394,7 +410,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			
 			// setup text paint
 			float textSize = 20f;		// initial minimum
-			float textSizeMax = 15f;	// total max is textSize + textSizeMax -> 40
+			float textSizeMax = 15f;	// total max is textSize + textSizeMax -> 35
 			TextPaint textPaint = new TextPaint();
 			textPaint.setARGB(255, 255, 255, 255);
 			textPaint.setAntiAlias(true);
@@ -535,7 +551,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			}
 			
 			// draw direction			
-			float angleRad = (float) ((Math.PI/2.0) - orientation[0]);
+			float angleRad = (float) ((Math.PI/2.0) - filteredOrientation);
 			float userX = (float) Math.cos(angleRad);
 			float userY = (float) -Math.sin(angleRad);
 			canvas.drawLine(fromLeft, fromTop, userX * 100 + fromLeft, userY * 100 + fromTop, paintBlue);
@@ -568,7 +584,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			canvas.drawText("Location source: " + locationSource, 10, 30, textPaint);
 			canvas.drawText("Latitude: " + lat, 10, 60, textPaint);
 			canvas.drawText("Longitude: " + lon, 10, 90, textPaint);
-			canvas.drawText(String.format("Azimuth: %5.2f", Util.normalize(Util.rad2deg(orientation[0]))), 10, 120, textPaint);
+			canvas.drawText(String.format("Azimuth: %5.2f", Util.normalize(Util.rad2deg(filteredOrientation))), 10, 120, textPaint);
 			canvas.drawText(String.format("Pitch: %5.2f", Util.rad2deg(orientation[1])), 10, 150, textPaint);
 			canvas.drawText(String.format("Roll: %5.2f", Util.rad2deg(orientation[2])), 10, 180, textPaint);
 			
