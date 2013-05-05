@@ -73,12 +73,6 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private float filteredOrientation = Float.NaN;
 	boolean firstFix = true;
 	
-	// extra info
-	private boolean drawExtraInfo = false;
-	private Poi poiExtraInfo = null;
-	private float xTouch = OUT_OF_SCREEN;
-	private float yTouch = OUT_OF_SCREEN;
-	
 	// hud
 	private Bitmap bitmap;
 	
@@ -287,7 +281,9 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		SensorManager.remapCoordinateSystem(R, SensorManager.AXIS_Z, SensorManager.AXIS_MINUS_X, R);
 		SensorManager.getOrientation(R, orientation);
 
+		// orientation smoothing
 		float calcOrientation = orientation[0];
+		float alpha = 0.05f;
 
 		if (Float.isNaN(filteredOrientation))
 			filteredOrientation = calcOrientation;
@@ -295,7 +291,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		float diffOrientation = calcOrientation - filteredOrientation;
 		if (diffOrientation > Math.PI)
 			diffOrientation -= 2 * Math.PI;
-		filteredOrientation = (float) (0.05 * diffOrientation + filteredOrientation);
+		filteredOrientation = (float) (alpha * diffOrientation + filteredOrientation);
 		
 		// find visible stops according to azimuth
 		gApp.findVisibleStops(Util.rad2deg(filteredOrientation));
@@ -315,6 +311,12 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	 */
 	private class PoiView extends SurfaceView {
 		private	NinePatchDrawable npd = (NinePatchDrawable)getResources().getDrawable(R.drawable.bubble);
+		
+		// extra info
+		private boolean drawExtraInfo = false;
+		private Poi poiExtraInfo = null;
+		private float xTouch = OUT_OF_SCREEN;
+		private float yTouch = OUT_OF_SCREEN;
 
 		public PoiView(Context context) {
 			super(context);
@@ -322,7 +324,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		}
 
 		/**
-		 * Draw methods
+		 * Draw on screen.
 		 */
 		@Override
 		protected void onDraw(Canvas canvas) {
@@ -332,6 +334,9 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			if(drawExtraInfo) drawExtraInfo(canvas);
 		}
 		
+		/**
+		 * Take care of touch event.
+		 */
 		@Override
 		public boolean onTouchEvent(MotionEvent event) {
 			if(event.getAction() == MotionEvent.ACTION_DOWN) {
@@ -388,7 +393,8 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			Collections.reverse(visible);
 			
 			// setup text paint
-			int textSize = 20;
+			float textSize = 20f;		// initial minimum
+			float textSizeMax = 15f;	// total max is textSize + textSizeMax -> 40
 			TextPaint textPaint = new TextPaint();
 			textPaint.setARGB(255, 255, 255, 255);
 			textPaint.setAntiAlias(true);
@@ -409,11 +415,16 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 				double angleDiff = p.getAngleDiff() + (double) gApp.getFOVHALF();
 				
 				int left = (int) (widthFOV * angleDiff);
-				int top = ch - (int) (heightDistance * p.getDistance());
-				textSize += (double) (10.0 * ((double)top / (double)ch));
+				int top;
+				if(visible.size() != 1) {
+					top = ch - (int) (heightDistance * p.getDistance());
+				} else {
+					top = (ch / 2) - (((int)textSize + (int)textSize + 10) / 2);
+				}
+				textSize += textSizeMax * (float)top / (float)ch;
 				textPaint.setTextSize(textSize);
 				int right = left + 20;
-				int bottom = top + textSize + textSize + 10;
+				int bottom = top + (int)textSize + (int)textSize + 10;
 				
 				Rect npdBounds = new Rect();
 				textPaint.getTextBounds(p.getName(), 0, p.getName().length(), npdBounds);
@@ -428,8 +439,9 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 				npdBounds.right -= shiftLeft;
 				
 				// fix drawing at the bottom of the screen
+				int shiftUp = 0;
 				if(npdBounds.bottom > ch) {
-					int shiftUp = npdBounds.bottom - ch;
+					shiftUp = npdBounds.bottom - ch;
 					npdBounds.top -= shiftUp;
 					npdBounds.bottom -= shiftUp;
 				}
@@ -447,8 +459,8 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 				npd.setBounds(npdBounds);
 				npd.draw(canvas);
 				
-				canvas.drawText(p.getName(), left + 10 - shiftLeft, top + textSize + 5, textPaint);
-				canvas.drawText(String.valueOf(p.getDistance()) + "m", left + 10 - shiftLeft, top + textSize + 5 + textSize, textPaint);
+				canvas.drawText(p.getName(), left + 10 - shiftLeft, top + textSize + 5 - shiftUp, textPaint);
+				canvas.drawText(String.valueOf(p.getDistance()) + "m", left + 10 - shiftLeft, top + textSize + 5 + textSize - shiftUp, textPaint);
 			}
 			
 			// end of cycle; "remove" touch
@@ -531,8 +543,8 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			// draw stops
 			if(relevant != null && cloc != null) {
 				for(Poi p : relevant) {
-					float pX = (float) ((p.getLon() - cloc.getLongitude()) / gApp.getD() * 100);
-					float pY = (float) -((p.getLat() - cloc.getLatitude()) / gApp.getD() * 100);
+					float pX = (float) ((p.getLon() - cloc.getLongitude()) / gApp.getD() * 70);
+					float pY = (float) -((p.getLat() - cloc.getLatitude()) / gApp.getD() * 85);
 					
 					if(p.isVisible() == true) {
 						canvas.drawPoint(pX + fromLeft, pY + fromTop, paintGreen);
