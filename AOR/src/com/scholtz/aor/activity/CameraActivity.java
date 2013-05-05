@@ -409,8 +409,8 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			Collections.reverse(visible);
 			
 			// setup text paint
-			float textSize = 14f;		// initial minimum
-			float textSizeDiff = 21f;	// total max is textSize + textSizeMax
+			float textSize = 20f;		// initial minimum
+			float textSizeDiff = 20f;	// total max is textSize + textSizeMax
 			TextPaint textPaint = new TextPaint();
 			textPaint.setARGB(255, 255, 255, 255);
 			textPaint.setAntiAlias(true);
