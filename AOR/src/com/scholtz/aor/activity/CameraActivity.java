@@ -88,10 +88,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
         
         gApp = ((GlobalApp)getApplicationContext());
         
-        mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 1, this);
-        mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 1, this);
-		
+        mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);		
 		mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 		
         requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -99,7 +96,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         
-        // check if GPS is enabled
+        // check if GPS is enabled; if not, redirect user to settings
 		if(mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) == false) {
 			Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
 			startActivity(intent);
@@ -410,7 +407,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			
 			// setup text paint
 			float textSize = 20f;		// initial minimum
-			float textSizeDiff = 20f;	// total max is textSize + textSizeMax
+			float textSizeDiff = 10f;	// total max is textSize + textSizeDiff
 			TextPaint textPaint = new TextPaint();
 			textPaint.setARGB(255, 255, 255, 255);
 			textPaint.setAntiAlias(true);

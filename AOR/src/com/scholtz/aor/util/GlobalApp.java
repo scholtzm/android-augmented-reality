@@ -112,7 +112,7 @@ public class GlobalApp extends Application {
 	 */
 	public void findVisibleStops(double azimuth) {
 		if(currentLocation == null || relevant.size() == 0) {
-			Log.d("AOR.noloc", "No location or relevant is empty ...");
+			Log.d("aor.noloc", "No location or relevant is empty ...");
 			return;
 		}
 		

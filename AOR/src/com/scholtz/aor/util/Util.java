@@ -20,6 +20,15 @@ public class Util {
 		}
 	}
 	
+	public static double angleDiff(double a, double b) {
+		double d = a - b;
+		if (d > 180)
+			d -= 360;
+		if (d < -180)
+			d += 360;
+		return d;
+	}
+	
 	public static double toCartesianX(double lat, double lon) {
 		lat = Math.toRadians(lat);
 		lon = Math.toRadians(lon);
@@ -30,14 +39,5 @@ public class Util {
 		lat = Math.toRadians(lat);
 		lon = Math.toRadians(lon);
 		return (double) (R * Math.cos(lat) * Math.sin(lon));
-	}
-
-	public static double angleDiff(double a, double b) {
-		double d = a - b;
-		if (d > 180)
-			d -= 360;
-		if (d < -180)
-			d += 360;
-		return d;
 	}
 }
