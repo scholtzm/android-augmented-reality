@@ -25,6 +25,11 @@ public class MainActivity extends Activity {
 		new LoadingTask().execute();
 	}
 
+	/**
+	 * Parse XML in another thread to unblock UI thread.
+	 * @author Mike
+	 *
+	 */
 	private class LoadingTask extends AsyncTask<Void, Void, Void> {
 
 		@Override

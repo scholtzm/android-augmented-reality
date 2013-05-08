@@ -1,7 +1,6 @@
 package com.scholtz.aor.activity;
 
 import java.io.InputStream;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -54,7 +53,7 @@ import com.scholtz.aor.view.CameraView;
  *
  */
 public class CameraActivity extends Activity implements LocationListener, SensorEventListener {
-	private final float OUT_OF_SCREEN = -100f;
+	private final float OUT_OF_SCREEN = Float.MIN_VALUE;
 	
 	private FrameLayout frameLayout;
 	private CameraView cameraView;
@@ -72,7 +71,6 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private float[] orientation = new float[3];
 	private String locationSource = "---";
 	private float filteredOrientation = Float.NaN;
-	private float[] orientationAverage = null;
 	boolean firstFix = true;
 	
 	// hud
@@ -176,7 +174,6 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	private void updateLocation(Location location, boolean updateRelevant) {
 		gApp.setCurrentLocation(location);
 		
-		long t1 = System.currentTimeMillis();
 		if(updateRelevant) {
 			gApp.findRelevantStops();
 			relevant = gApp.getRelevant();
@@ -184,7 +181,6 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 				Toast.makeText(getApplicationContext(), "No relevant stops found ...", Toast.LENGTH_LONG).show();
 			}
 		}
-		Log.d("aor.time.relevant", String.valueOf(System.currentTimeMillis()-t1));
 		
 		locationSource = location.getProvider();
 		lat = location.getLatitude();
@@ -193,7 +189,6 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		String url = String.format("http://maps.googleapis.com/maps/api/staticmap?center=%s,%s&size=200x200&sensor=false&maptype=roadmap&zoom=13",
 		Double.toString(lat).replace(',', '.'), Double.toString(lon).replace(',', '.'));
 
-		Log.d("aor.download", "Loading: " + url);
 		new DownloadImageTask().execute(url);
 	}
 	
@@ -282,29 +277,15 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 
 		// orientation smoothing
 		float calcOrientation = orientation[0];
-//		float alpha = 0.05f;
-//
-//		if (Float.isNaN(filteredOrientation))
-//			filteredOrientation = calcOrientation;
-//
-//		float diffOrientation = calcOrientation - filteredOrientation;
-//		if (diffOrientation > Math.PI)
-//			diffOrientation -= 2 * Math.PI;
-//		filteredOrientation = (float) (alpha * diffOrientation + filteredOrientation);
-		
-		if(orientationAverage == null) {
-			orientationAverage = new float[10];
-			Arrays.fill(orientationAverage, calcOrientation);
-		}
-		
-		System.arraycopy(orientationAverage, 0, orientationAverage, 1, orientationAverage.length - 1);
-		orientationAverage[0] = calcOrientation;
-		
-		float sum = 0;
-		for(int i = 0; i < orientationAverage.length; i++)
-			sum += orientationAverage[i];
-		
-		filteredOrientation = sum / 10f;
+		float alpha = 0.05f;
+
+		if (Float.isNaN(filteredOrientation))
+			filteredOrientation = calcOrientation;
+
+		float diffOrientation = calcOrientation - filteredOrientation;
+		if (diffOrientation > Math.PI)
+			diffOrientation -= 2 * Math.PI;
+		filteredOrientation = (float) (alpha * diffOrientation + filteredOrientation);
 
 		// find visible stops according to azimuth
 		gApp.findVisibleStops(Util.rad2deg(filteredOrientation));
@@ -323,7 +304,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	 *
 	 */
 	private class PoiView extends SurfaceView {
-		private	NinePatchDrawable npd = (NinePatchDrawable)getResources().getDrawable(R.drawable.bubble);
+		private	NinePatchDrawable npd = (NinePatchDrawable)getResources().getDrawable(R.drawable.ultimate);
 		
 		// extra info
 		private boolean drawExtraInfo = false;
@@ -406,8 +387,8 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			Collections.reverse(visible);
 			
 			// setup text paint
-			float textSize = 20f;		// initial minimum
-			float textSizeDiff = 10f;	// total max is textSize + textSizeDiff
+			float textSize = 14f;		// initial minimum
+			float textSizeDiff = 16f;	// total max is textSize + textSizeDiff
 			TextPaint textPaint = new TextPaint();
 			textPaint.setARGB(255, 255, 255, 255);
 			textPaint.setAntiAlias(true);
@@ -427,6 +408,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			for(Poi p : visible) {
 				double angleDiff = p.getAngleDiff() + (double) gApp.getFOVHALF();
 				
+				// manually calculate dimensions
 				int left = (int) (widthFOV * angleDiff);
 				int top;
 				if(visible.size() != 1) {
@@ -439,12 +421,22 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 				int right = left + 20;
 				int bottom = top + (int)textSize + (int)textSize + 10;
 				
+				// determine size; fix for very short stop names
 				Rect npdBounds = new Rect();
+				int initialRight;
 				textPaint.getTextBounds(p.getName(), 0, p.getName().length(), npdBounds);
-				npdBounds.left += left + 2;
-				npdBounds.top += top + 22;
+				initialRight = npdBounds.right;
+				StringBuilder sb = new StringBuilder(String.valueOf(p.getDistance()));
+				sb.append("m");
+				textPaint.getTextBounds(sb.toString(), 0, sb.length(), npdBounds);
+				if(initialRight > npdBounds.right)
+					npdBounds.right = initialRight;
+				
+				// put everything together
+				npdBounds.left = left;
+				npdBounds.top = top;
 				npdBounds.right += right;
-				npdBounds.bottom += bottom;
+				npdBounds.bottom = bottom;
 				
 				// adjust to center
 				int shiftLeft = npdBounds.width() / 2;
@@ -469,9 +461,11 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 					}
 				}
 				
+				// draw npd
 				npd.setBounds(npdBounds);
 				npd.draw(canvas);
 				
+				// draw text
 				canvas.drawText(p.getName(), left + 10 - shiftLeft, top + textSize + 5 - shiftUp, textPaint);
 				canvas.drawText(String.valueOf(p.getDistance()) + "m", left + 10 - shiftLeft, top + textSize + 5 + textSize - shiftUp, textPaint);
 			}

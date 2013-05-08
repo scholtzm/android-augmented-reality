@@ -7,7 +7,6 @@ import java.util.List;
 import android.app.Application;
 import android.location.Location;
 import android.location.LocationManager;
-import android.util.Log;
 
 /**
  * Globally accessible variables and methods
@@ -79,10 +78,6 @@ public class GlobalApp extends Application {
 	 * Finds relevant bus stops around the user according to current location
 	 */
 	public void findRelevantStops() {
-		// TBD-s
-		long start = System.nanoTime();
-		// TBD-d
-
 		relevant.clear();
 		
 		if(currentLocation != null) {
@@ -97,47 +92,24 @@ public class GlobalApp extends Application {
 			
 			calcLocation = currentLocation;
 		}
-
-		// TBD-s
-		double time = (System.nanoTime() - start) / 1000000.0;
-		Log.d("AOR", "Found " + relevant.size() + " stops in " + time + "ms");
-		// TBD-d
 	}
 	
-	private long counter = 0;
-
 	/**
 	 * Finds visible stops according to users location and azimuth
 	 * @param azimuth Device azimuth
 	 */
 	public void findVisibleStops(double azimuth) {
-		if(currentLocation == null || relevant.size() == 0) {
-			Log.d("aor.noloc", "No location or relevant is empty ...");
+		if(currentLocation == null || relevant.size() == 0)
 			return;
-		}
-		
-		// TBD-s
-		counter++;
-		long start = System.nanoTime();
-
-		for (Poi p : relevant)
-			p.setVisible(false);
-		// TBD-e
 		
 		visible.clear();
 		float[] distanceToVisible = new float[3];
 		
 		double currentX = currentLocation.getLongitude();
 		double currentY = currentLocation.getLatitude();
-
 		
-		// TBD-s
-		if (counter % 100 == 0)
-			Log.d("AOR.azimuth", "oldAzimuth: " + azimuth);
+		// rotate azimuth according to atan2
 		azimuth = 90 - azimuth;
-		if (counter % 100 == 0)
-			Log.d("AOR.azimuth", "newAzimuth: " + azimuth);
-		// TBD-d
 
 		for(Poi p : relevant) {
 			double poiX = p.getLon();
@@ -146,28 +118,18 @@ public class GlobalApp extends Application {
 			double angle = Math.atan2(poiY - currentY, poiX - currentX);
 			double degAngle = Util.rad2deg(angle);
 			double poiAngle = Util.normalize(degAngle);
-			
-			// TBD-s
-			if (counter % 100 == 0) {
-				Log.d("AOR", p.getName() + " lat:" + p.getLat() + " lon:" + p.getLon() + " angle:" + poiAngle);
-			}
-			// TBD-d
 
 			double angleDiff = Util.angleDiff(azimuth, poiAngle);
 			if(Math.abs(angleDiff) <= FOVHALF) {
-				p.setAngleDiff(angleDiff);
 				Location.distanceBetween(currentY, currentX, p.getLat(), p.getLon(), distanceToVisible);
+				p.setVisible(true);
+				p.setAngleDiff(angleDiff);
 				p.setDistance((int) distanceToVisible[0]);
 				visible.add(p);
-				p.setVisible(true);
+			} else {
+				p.setVisible(false);
 			}
 		}
-
-		// TBD-s
-		double time = (System.nanoTime() - start) / 1000000.0;
-		if (counter % 100 == 0)
-			Log.d("AOR", "Added " + visible.size() + " stops in " + time + "ms");
-		// TBD-d
 	}
 
 	/**
