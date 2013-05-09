@@ -148,8 +148,8 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 1, this);
 		mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 1, this);
 		
-		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
-		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), SensorManager.SENSOR_DELAY_NORMAL);
+		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_FASTEST);
+		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), SensorManager.SENSOR_DELAY_FASTEST);
 	
         // let's use last known location; gps provider is preferred
         Location lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
@@ -277,7 +277,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 
 		// orientation smoothing
 		float calcOrientation = orientation[0];
-		float alpha = 0.05f;
+		float alpha = 0.02f;
 
 		if (Float.isNaN(filteredOrientation))
 			filteredOrientation = calcOrientation;
