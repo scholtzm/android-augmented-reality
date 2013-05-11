@@ -422,13 +422,15 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 				int bottom = top + (int)textSize + (int)textSize + 10;
 				
 				// determine size; fix for very short stop names
-				Rect npdBounds = new Rect();
 				int initialRight;
+				Rect npdBounds = new Rect();
+				StringBuilder sb = new StringBuilder(String.valueOf(p.getDistance()));
+				
 				textPaint.getTextBounds(p.getName(), 0, p.getName().length(), npdBounds);
 				initialRight = npdBounds.right;
-				StringBuilder sb = new StringBuilder(String.valueOf(p.getDistance()));
 				sb.append("m");
 				textPaint.getTextBounds(sb.toString(), 0, sb.length(), npdBounds);
+				
 				if(initialRight > npdBounds.right)
 					npdBounds.right = initialRight;
 				
@@ -542,7 +544,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			}
 			
 			// draw direction			
-			float angleRad = (float) ((Math.PI/2.0) - filteredOrientation);
+			float angleRad = (float) ((Math.PI/2f) - filteredOrientation);
 			float userX = (float) Math.cos(angleRad);
 			float userY = (float) -Math.sin(angleRad);
 			canvas.drawLine(fromLeft, fromTop, userX * 100 + fromLeft, userY * 100 + fromTop, paintBlue);
