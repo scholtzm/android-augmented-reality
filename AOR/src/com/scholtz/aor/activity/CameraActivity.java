@@ -544,7 +544,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			}
 			
 			// draw direction			
-			float angleRad = (float) ((Math.PI/2f) - filteredOrientation);
+			float angleRad = (float) ((Math.PI/2.0) - filteredOrientation);
 			float userX = (float) Math.cos(angleRad);
 			float userY = (float) -Math.sin(angleRad);
 			canvas.drawLine(fromLeft, fromTop, userX * 100 + fromLeft, userY * 100 + fromTop, paintBlue);
