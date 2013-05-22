@@ -30,7 +30,6 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.TextPaint;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceView;
 import android.view.ViewGroup.LayoutParams;
@@ -204,7 +203,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 				bitmap = BitmapFactory.decodeStream(in);
 				in.close();
 			} catch (Exception e) {
-				Log.e("Error", "Failed to download " + url, e);
+				e.printStackTrace();
 			}
 			return bitmap;
 		}
