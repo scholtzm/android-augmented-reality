@@ -74,6 +74,7 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 	
 	// hud
 	private Bitmap bitmap;
+	private int hudSize = 400;
 	
 	/**
 	 * Setup required services in onCreate
@@ -185,8 +186,8 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 		lat = location.getLatitude();
 		lon = location.getLongitude();
 		
-		String url = String.format("http://maps.googleapis.com/maps/api/staticmap?center=%s,%s&size=200x200&sensor=false&maptype=roadmap&zoom=13",
-		Double.toString(lat).replace(',', '.'), Double.toString(lon).replace(',', '.'));
+		String url = String.format("http://maps.googleapis.com/maps/api/staticmap?center=%s,%s&size=%dx%d&sensor=false&maptype=roadmap&zoom=13",
+		Double.toString(lat).replace(',', '.'), Double.toString(lon).replace(',', '.'), hudSize, hudSize);
 
 		new DownloadImageTask().execute(url);
 	}
@@ -386,8 +387,8 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			Collections.reverse(visible);
 			
 			// setup text paint
-			float textSize = 14f;		// initial minimum
-			float textSizeDiff = 16f;	// total max is textSize + textSizeDiff
+			float textSize = 28f;		// initial minimum // ZMENA
+			float textSizeDiff = 32f;	// total max is textSize + textSizeDiff // ZMENA
 			TextPaint textPaint = new TextPaint();
 			textPaint.setARGB(255, 255, 255, 255);
 			textPaint.setAntiAlias(true);
@@ -528,25 +529,25 @@ public class CameraActivity extends Activity implements LocationListener, Sensor
 			paintBlue.setStrokeWidth(2);
 			
 			// center - kind of
-			float fromLeft = canvas.getWidth() - 100;
-			float fromTop = 100;
+			float fromLeft = canvas.getWidth() - (hudSize / 2);
+			float fromTop = hudSize / 2;
 			
 			// draw black border
-			canvas.drawRect(canvas.getWidth() - 202, 0, canvas.getWidth(), 202, paintBg);
+			canvas.drawRect(canvas.getWidth() - (hudSize + 2), 0, canvas.getWidth(), (hudSize + 2), paintBg);
 			
 			// draw white bg or a map
 			paintBg.setARGB(255, 255, 255, 255);
 			if(bitmap == null) {
-				canvas.drawRect(canvas.getWidth() - 200, 0, canvas.getWidth(), 200, paintBg);
+				canvas.drawRect(canvas.getWidth() - hudSize, 0, canvas.getWidth(), hudSize, paintBg);
 			} else {
-				canvas.drawBitmap(bitmap, canvas.getWidth() - 200, 0, paintBg);
+				canvas.drawBitmap(bitmap, canvas.getWidth() - hudSize, 0, paintBg);
 			}
 			
 			// draw direction			
 			float angleRad = (float) ((Math.PI/2.0) - filteredOrientation);
 			float userX = (float) Math.cos(angleRad);
 			float userY = (float) -Math.sin(angleRad);
-			canvas.drawLine(fromLeft, fromTop, userX * 100 + fromLeft, userY * 100 + fromTop, paintBlue);
+			canvas.drawLine(fromLeft, fromTop, userX * (hudSize / 2) + fromLeft, userY * (hudSize / 2) + fromTop, paintBlue);
 			
 			// draw stops
 			if(relevant != null && cloc != null) {
